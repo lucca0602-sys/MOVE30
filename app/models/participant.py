@@ -10,3 +10,10 @@ class ParticipantIndicators(BaseModel):
 	fc_score: float = Field(ge=0, le=100)
 	habitos_score: float = Field(ge=0, le=100)
 	indice_move: float = Field(ge=0, le=100)
+
+
+class AnalysisResponse(BaseModel):
+	perfil: str
+	destaque: str
+	oportunidade: str
+	mensagem: str
