@@ -10,6 +10,6 @@ def validar_resposta(resposta: str) -> AnalysisResponse:
 	try:
 		dados = json.loads(resposta)
 		return AnalysisResponse.model_validate(dados)
-	
+
 	except (json.JSONDecodeError, ValidationError) as erro:
 		raise ValueError("A resposta da IA possui um formato invalido.") from erro
