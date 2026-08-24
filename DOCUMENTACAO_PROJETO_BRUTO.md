@@ -329,12 +329,19 @@ Em andamento:
 - validar e documentar a resposta real do AI Agent com o Ollama;
 - evoluir a documentacao junto com o projeto bruto.
 
-## Proximas etapas
+**Próximos passos do projeto final**
 
-1. Validar a resposta real do AI Agent com o Ollama.
-2. Padronizar o JSON de resposta.
-3. Adicionar validacoes de entrada e erros especificos.
-4. Implementar as regras de negocio do projeto academico.
-5. Criar a interface web.
-6. Adicionar testes automatizados.
-7. Atualizar esta documentacao a cada nova etapa.
+1. Substituir a resposta fixa pela resposta real do Ollama.
+2. Padronizar o JSON de entrada e saída.
+3. Definir a função principal do agente e suas regras.
+4. Implementar validações no FastAPI.
+5. Melhorar o tratamento de erros e logs.
+6. Criar a estrutura do projeto final no repositório.
+7. Desenvolver a interface web.
+8. Integrar a interface ao endpoint `/agent`.
+9. Adicionar persistência de dados, se necessário.
+10. Criar testes automatizados.
+11. Documentar cada funcionalidade implementada.
+12. Revisar segurança, organização e desempenho.
+13. Fazer testes completos com todos os participantes.
+14. Preparar a apresentação e a documentação acadêmica final.
