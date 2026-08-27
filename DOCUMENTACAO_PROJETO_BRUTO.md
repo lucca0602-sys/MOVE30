@@ -6,6 +6,21 @@ Construir um agente local para projetos academicos usando FastAPI como API de en
 
 A documentacao sera ampliada conforme novas funcionalidades e integracoes forem implementadas.
 
+## MVP implementado em 27/08/2026
+
+O primeiro MVP recebe os indicadores de um participante, cria um prompt especializado, envia os dados ao n8n, solicita uma interpretacao ao AI Agent conectado ao Ollama/Llama 3.2 e devolve uma resposta estruturada em JSON.
+
+Contrato da resposta:
+
+```json
+{
+        "perfil": "...",
+        "destaque": "...",
+        "oportunidade": "...",
+        "mensagem": "..."
+}
+```
+
 ## Arquitetura atual
 
 ```text
@@ -41,16 +56,19 @@ Arquivo: `app.py`
 
 Responsabilidades:
 
-- receber `message` e `context` na rota `POST /agent`;
-- enviar os dados em JSON ao webhook do n8n;
+- receber indicadores na rota `POST /analyze`;
+- validar tipos e limites dos indicadores;
+- criar o prompt especializado;
+- enviar prompt e indicadores em JSON ao webhook do n8n;
 - receber o retorno do n8n;
+- validar a resposta da IA;
 - devolver uma resposta padronizada ao cliente.
 
 Rotas:
 
 ```text
 GET  http://127.0.0.1:8002/health
-POST http://127.0.0.1:8002/agent
+POST http://127.0.0.1:8002/analyze
 ```
 
 ### Docker Desktop
@@ -161,7 +179,9 @@ No primeiro teste foi utilizada uma resposta fixa:
 
 O teste confirmou a comunicacao entre FastAPI, Webhook e Respond to Webhook.
 
-Na versao com IA, o retorno deve ser a saida do AI Agent. Dependendo da versao do n8n, o resultado pode aparecer em `text` ou `output`.
+No MVP, o no deve usar `First Incoming Item` para devolver a saida do AI Agent. A resposta deve conter `perfil`, `destaque`, `oportunidade` e `mensagem`.
+
+O validador do FastAPI aceita JSON puro ou JSON retornado dentro de texto/Markdown, desde que o objeto contenha os quatro campos obrigatorios.
 
 ## Comandos principais
 
@@ -201,7 +221,7 @@ $env:N8N_WEBHOOK_URL = "http://localhost:5678/webhook-test/agente"
 ```
 
 ```powershell
-& "C:\Users\lucca\AppData\Local\Programs\Python\Python314\python.exe" -m uvicorn app:app --app-dir "C:\Users\lucca\PYprjectVSC" --host 127.0.0.1 --port 8002
+& "C:\Users\lucca\Projetos(PY,JAVA)\agente-ia-indicadores\.venv\Scripts\python.exe" -m uvicorn app.main:app --app-dir "C:\Users\lucca\Projetos(PY,JAVA)\agente-ia-indicadores" --host 127.0.0.1 --port 8002
 ```
 
 O terminal do Uvicorn deve permanecer aberto.
@@ -222,16 +242,27 @@ status
 ok
 ```
 
-### Testar o fluxo completo
+### Testar o MVP completo
 
 No n8n, clicar em **Execute workflow**. Em outro PowerShell:
 
 ```powershell
-$body = '{"message":"Preciso de ajuda com atendimento","context":{"cliente_id":"123","canal":"whatsapp"}}'
+$body = @'
+{
+        "idade": 25,
+        "imc": 23.4,
+        "fc_repouso": 68,
+        "atividade_score": 80,
+        "resistencia_score": 75,
+        "fc_score": 70,
+        "habitos_score": 65,
+        "indice_move": 74
+}
+'@
 ```
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8002/agent" -ContentType "application/json" -Body $body
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8002/analyze" -ContentType "application/json" -Body $body
 ```
 
 Retorno do teste inicial:
@@ -244,9 +275,13 @@ status  : success
 Retorno esperado com o Ollama:
 
 ```text
-answer  : resposta gerada pelo llama3.2
-status  : success
+perfil        : resposta gerada pelo llama3.2
+destaque      : ...
+oportunidade  : ...
+mensagem      : ...
 ```
+
+Valores fora dos limites definidos em `ParticipantIndicators` devem retornar `422 Unprocessable Entity` antes de chamar o n8n.
 
 ## Problemas encontrados
 
@@ -321,27 +356,27 @@ Concluido:
 - Ollama instalado;
 - modelo `llama3.2:latest` baixado;
 - FastAPI funcionando na porta `8002`;
+- endpoint `/analyze` estruturado para receber indicadores;
+- integracao real com o webhook do n8n implementada;
+- resposta da IA validada pelo modelo `AnalysisResponse`;
+- validador preparado para JSON puro, Markdown ou texto ao redor do JSON;
 - comunicacao FastAPI -> n8n testada com sucesso;
 - fluxo com resposta fixa validado.
 
 Em andamento:
 
-- validar e documentar a resposta real do AI Agent com o Ollama;
+- realizar novo teste ponta a ponta do `/analyze` com o workflow real do n8n;
 - evoluir a documentacao junto com o projeto bruto.
 
 **Próximos passos do projeto final**
 
-1. Substituir a resposta fixa pela resposta real do Ollama.
-2. Padronizar o JSON de entrada e saída.
-3. Definir a função principal do agente e suas regras.
-4. Implementar validações no FastAPI.
+1. Confirmar o teste ponta a ponta do `/analyze` com o n8n real.
+2. Padronizar e versionar o JSON de entrada e saída.
+3. Definir as regras de interpretação dos indicadores.
+4. Criar testes automatizados para modelos, prompt, validador e rota.
 5. Melhorar o tratamento de erros e logs.
-6. Criar a estrutura do projeto final no repositório.
-7. Desenvolver a interface web.
-8. Integrar a interface ao endpoint `/agent`.
-9. Adicionar persistência de dados, se necessário.
-10. Criar testes automatizados.
-11. Documentar cada funcionalidade implementada.
-12. Revisar segurança, organização e desempenho.
-13. Fazer testes completos com todos os participantes.
-14. Preparar a apresentação e a documentação acadêmica final.
+6. Desenvolver a interface web.
+7. Adicionar persistência de dados, se necessário.
+8. Revisar segurança, organização e desempenho.
+9. Fazer testes completos com todos os participantes.
+10. Preparar a apresentação e a documentação acadêmica final.
