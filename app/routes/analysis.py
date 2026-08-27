@@ -12,7 +12,7 @@ router = APIRouter()
 @router.post("/analyze", response_model=AnalysisResponse)
 def analyze_indicators(indicators: ParticipantIndicators) -> AnalysisResponse:
 	prompt = criar_prompt(indicators)
-	resposta_ia = enviar_para_ia(prompt)
+	resposta_ia = enviar_para_ia(prompt, indicators)
 	analise = validar_resposta(resposta_ia)
 
 	return AnalysisResponse(
