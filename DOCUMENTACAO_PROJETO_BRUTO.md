@@ -6,6 +6,84 @@ Construir um agente local para projetos academicos usando FastAPI como API de en
 
 A documentacao sera ampliada conforme novas funcionalidades e integracoes forem implementadas.
 
+## Historico de desenvolvimento e validacoes
+
+Esta secao registra quando cada etapa foi realizada para que a evolucao do projeto possa ser compreendida por pessoas tecnicas e nao tecnicas. As datas distinguem a validacao da infraestrutura, o teste de conexao e a implementacao do MVP.
+
+### 23/08/2026 - Infraestrutura e teste de conexao
+
+Atividades realizadas:
+
+- configuracao do Docker Desktop com WSL 2 no Windows;
+- instalacao e inicializacao do n8n self-hosted em container Docker;
+- criacao do volume persistente `n8n_data`;
+- instalacao do Ollama local;
+- download do modelo `llama3.2:latest`;
+- criacao do workflow inicial com Webhook e Respond to Webhook;
+- configuracao do FastAPI para enviar requisicoes ao webhook;
+- teste de comunicacao entre FastAPI e n8n.
+
+Validacao concluida:
+
+```text
+FastAPI -> Webhook n8n -> Respond to Webhook -> FastAPI
+Resultado: answer = Teste recebido pelo n8n; status = success
+```
+
+Problemas encontrados e resolvidos:
+
+- virtualizacao e componentes do WSL 2 precisaram ser habilitados;
+- o n8n precisou ser executado pelo Docker Desktop;
+- comandos `cd /d` foram substituidos por `Set-Location` no PowerShell;
+- conflitos de porta foram tratados mantendo uma unica instancia do servidor;
+- o caminho do modulo FastAPI foi corrigido com `--app-dir`.
+
+Encerramento da etapa:
+
+- infraestrutura local validada;
+- comunicacao basica validada;
+- pendencias: conectar o AI Agent ao Ollama e definir o contrato dos indicadores.
+
+### 27/08/2026 - Primeiro MVP de indicadores
+
+Atividades realizadas:
+
+- definicao do modelo `ParticipantIndicators`;
+- validacao de tipos e limites dos indicadores com Pydantic;
+- criacao do prompt especializado em interpretacao de indicadores;
+- implementacao do endpoint `POST /analyze`;
+- substituicao da simulacao por uma chamada ao webhook do n8n;
+- conexao do AI Agent ao Ollama com o modelo Llama 3.2;
+- definicao da resposta estruturada com quatro campos;
+- normalizacao de respostas JSON puras, em Markdown ou acompanhadas de texto;
+- teste com indicadores validos e teste com valores extremos dentro dos limites.
+
+Contrato validado:
+
+```json
+{
+        "perfil": "...",
+        "destaque": "...",
+        "oportunidade": "...",
+        "mensagem": "..."
+}
+```
+
+Resultado da validacao:
+
+- o FastAPI recebeu os indicadores;
+- o prompt e os indicadores foram enviados ao n8n;
+- o n8n encaminhou a solicitacao ao AI Agent;
+- o Ollama gerou a resposta;
+- o FastAPI validou o JSON recebido.
+
+Pendencias definidas ao final da etapa:
+
+- adicionar testes automatizados ao diretorio `tests`;
+- revisar o contrato final de entrada e saida;
+- definir regras de negocio e classificacao dos indicadores;
+- revisar o workflow e documentar sua versao de producao.
+
 ## MVP implementado em 27/08/2026
 
 O primeiro MVP recebe os indicadores de um participante, cria um prompt especializado, envia os dados ao n8n, solicita uma interpretacao ao AI Agent conectado ao Ollama/Llama 3.2 e devolve uma resposta estruturada em JSON.
@@ -149,11 +227,14 @@ Prompt inicial:
 ```text
 Voce e um assistente util e objetivo.
 
-Mensagem do usuario:
-{{$json.body.message}}
+Prompt recebido pelo FastAPI:
+{{$json.prompt}}
 
-Contexto:
-{{JSON.stringify($json.body.context)}}
+Indicadores recebidos pelo FastAPI:
+{{JSON.stringify($json.indicadores)}}
+
+Retorne somente um JSON valido, sem markdown, usando exatamente os campos
+perfil, destaque, oportunidade e mensagem.
 ```
 
 ### Ollama Chat Model
@@ -347,7 +428,7 @@ Para o uso academico local planejado:
 - Docker Desktop: observar os termos de uso conforme o tipo de uso;
 - hardware, energia e espaco em disco continuam sendo recursos necessarios.
 
-## Estado atual
+## Estado atual em 27/08/2026
 
 Concluido:
 
@@ -360,12 +441,18 @@ Concluido:
 - integracao real com o webhook do n8n implementada;
 - resposta da IA validada pelo modelo `AnalysisResponse`;
 - validador preparado para JSON puro, Markdown ou texto ao redor do JSON;
-- comunicacao FastAPI -> n8n testada com sucesso;
-- fluxo com resposta fixa validado.
+- comunicacao FastAPI -> n8n testada com sucesso em 23/08/2026;
+- fluxo com resposta fixa validado em 23/08/2026;
+- MVP de indicadores implementado em 27/08/2026;
+- integracao do `ai_service.py` com o webhook implementada;
+- resposta estruturada validada pelo modelo `AnalysisResponse`;
+- validador preparado para respostas JSON puras, Markdown ou texto ao redor do JSON;
+- teste de contrato HTTP da integracao concluido com sucesso;
+- documentacao atualizada para separar as etapas por data.
 
 Em andamento:
 
-- realizar novo teste ponta a ponta do `/analyze` com o workflow real do n8n;
+- repetir e registrar o teste ponta a ponta do `/analyze` com o workflow real do n8n;
 - evoluir a documentacao junto com o projeto bruto.
 
 **Próximos passos do projeto final**
