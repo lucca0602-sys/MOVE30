@@ -467,3 +467,250 @@ Em andamento:
 8. Revisar segurança, organização e desempenho.
 9. Fazer testes completos com todos os participantes.
 10. Preparar a apresentação e a documentação acadêmica final.
+
+
+### 02/09/2026 - Início da fase de integração e refinamento do MOVE30
+
+A partir de 02/09/2026 foi iniciada uma nova fase experimental do MOVE30, com foco em aproximar o MVP do fluxo previsto para o projeto final.
+
+O objetivo deixou de ser apenas comprovar a comunicação entre FastAPI, n8n e IA e passou a incluir o cadastro de participantes, persistência dos dados, visualização no frontend e análise do comportamento da IA diante dos indicadores.
+
+Objetivos desta fase:
+
+- compreender o fluxo completo dos dados entre as camadas do sistema;
+- observar como os indicadores chegavam ao modelo de IA;
+- identificar conclusões incorretas ou não definidas pelo projeto;
+- separar cálculos e classificações determinísticas da interpretação feita pela IA;
+- preparar o ecossistema para futuras integrações com os dados reais provenientes do IoT.
+
+Esta fase foi utilizada como ambiente de experimentação da **Mark I**, recebendo novas validações nos dias 05/09 e 10/09.
+
+
+### 05/09/2026 - Teste ponta a ponta do ecossistema MOVE30
+
+Foi realizado um teste completo para validar a integração entre as principais partes do protótipo.
+
+Fluxo testado:
+
+```text
+Frontend -> FastAPI -> PostgreSQL -> n8n -> Ollama/Llama 3.2
+         -> validação da resposta -> Frontend
+```
+
+Atividades realizadas:
+
+- cadastro do participante pelo frontend;
+- envio dos dados ao FastAPI;
+- persistência dos dados no PostgreSQL;
+- recuperação dos indicadores pelo backend;
+- montagem do payload enviado ao n8n;
+- envio dos indicadores para processamento pela IA;
+- chamada ao modelo local Llama 3.2 pelo Ollama;
+- retorno estruturado nos campos `perfil`, `destaque`, `oportunidade` e `mensagem`;
+- validação da resposta no backend com Pydantic;
+- exibição da análise no frontend.
+
+Resultado:
+
+- o teste ponta a ponta funcionou;
+- o frontend conseguiu cadastrar o participante e apresentar posteriormente sua análise;
+- a integração entre frontend, backend, banco de dados, n8n e IA foi comprovada;
+- a estrutura de resposta definida para a Mark I foi mantida.
+
+#### Problemas identificados durante os testes de interpretação
+
+Apesar do funcionamento correto da integração, os testes mostraram que a IA estava realizando classificações e inferências sem regras determinísticas suficientes.
+
+Entre os problemas observados:
+
+- IMC `19` foi interpretado como acima do peso;
+- IMC `22` foi interpretado como acima do peso;
+- IMC `20` foi interpretado como abaixo do peso;
+- `fc_repouso` recebeu interpretações semânticas que não estavam definidas pelo projeto;
+- alguns scores foram transformados em conclusões que não estavam explicitamente presentes nos dados enviados.
+
+Esses testes mostraram uma diferença importante entre **calcular/classificar dados** e **interpretar dados**.
+
+Conclusão técnica da etapa:
+
+> O fluxo de integração estava funcional, porém a IA não deveria ser responsável por calcular ou decidir classificações objetivas que podem ser determinadas pelo próprio sistema.
+
+A partir dessa conclusão, foi definida como próxima ação a criação de regras no backend para tratar determinados indicadores antes de enviá-los à IA.
+
+
+### 10/09/2026 - Tratamento determinístico do IMC e validação da Mark I
+
+Após analisar os erros encontrados nos testes anteriores, foi decidido retirar da IA a responsabilidade de classificar o IMC.
+
+A classificação passou a ser realizada diretamente pelo backend, utilizando uma regra determinística em Python.
+
+Foi criada a função:
+
+```python
+def classificar_imc(imc: float) -> str:
+
+    if imc < 18.5:
+        return "Abaixo do peso"
+
+    elif imc < 25:
+        return "Peso considerado normal"
+
+    elif imc < 30:
+        return "Sobrepeso"
+
+    elif imc < 35:
+        return "Obesidade grau I"
+
+    elif imc < 40:
+        return "Obesidade grau II"
+
+    else:
+        return "Obesidade grau III"
+```
+
+A classificação calculada pelo backend passou a ser adicionada ao payload enviado ao n8n:
+
+```python
+"classificacao_imc": classificar_imc(participant["imc"])
+```
+
+Dessa forma, o fluxo passou a seguir o princípio:
+
+```text
+Valor do IMC
+      |
+      v
+Classificação no backend
+      |
+      v
+Payload com classificação pronta
+      |
+      v
+n8n / IA
+      |
+      v
+Interpretação
+```
+
+A IA deixa de decidir qual é a classificação do IMC e passa a receber essa informação já tratada pelo sistema.
+
+#### Erro encontrado durante a implementação
+
+Durante o primeiro teste após a alteração foi retornado:
+
+```text
+NameError: name 'classificar_imc' is not defined
+```
+
+O problema ocorreu porque o arquivo `n8n_service.py` utilizava a função `classificar_imc()`, porém ela ainda não havia sido importada.
+
+A correção realizada foi:
+
+```python
+from backend.models.participant import classificar_imc
+```
+
+Após a correção, o backend voltou a montar o payload normalmente e os testes puderam continuar.
+
+#### Testes de validação da classificação
+
+Foram realizados testes com participantes contendo valores de IMC em diferentes faixas.
+
+| IMC | Classificação esperada | Resultado |
+|---:|---|---|
+| 17.2 | Abaixo do peso | Aprovado |
+| 22.0 | Peso considerado normal | Aprovado |
+| 27.4 | Sobrepeso | Aprovado |
+| 32.8 | Obesidade grau I | Aprovado |
+| 42.3 | Obesidade grau III | Aprovado |
+
+O teste com IMC `22.0` foi especialmente importante, pois valores dessa faixa haviam sido interpretados incorretamente nos testes anteriores.
+
+Após o tratamento no backend, a resposta passou a utilizar corretamente a classificação recebida no payload.
+
+Com isso, a regra de classificação do IMC foi considerada **validada para a Mark I**.
+
+#### Limitações observadas após a correção do IMC
+
+A classificação do IMC foi corrigida, porém os testes também revelaram problemas semânticos em outros indicadores.
+
+Entre os exemplos observados:
+
+- `fc_repouso` foi interpretado em alguns testes como porcentagem ou tempo de repouso;
+- `fc_score` recebeu interpretações e nomes incorretos;
+- nomes internos de alguns scores apareceram diretamente no texto;
+- a IA realizou algumas inferências além do que os indicadores isoladamente permitem afirmar.
+
+Esses pontos foram mantidos como **limitações conhecidas da Mark I**.
+
+O refinamento desses indicadores será realizado posteriormente, quando as regras de processamento e a integração com os dados reais provenientes do IoT estiverem mais definidas.
+
+#### Aprendizado obtido com os testes
+
+A bateria de testes realizada entre 02/09 e 10/09 permitiu compreender melhor como os dados devem ser tratados antes de chegarem à IA.
+
+Foi estabelecido o seguinte princípio para a evolução do MOVE30:
+
+```text
+Sensores / dados
+      |
+      v
+Sistema calcula e classifica
+      |
+      v
+Backend estrutura e valida
+      |
+      v
+IA interpreta e comunica
+```
+
+Portanto:
+
+**cálculos e classificações objetivas ficam sob responsabilidade do sistema, enquanto a IA trabalha sobre dados já tratados para produzir uma interpretação estruturada.**
+
+## Estado atual em 10/09/2026
+
+### Concluído
+
+- Docker Desktop instalado e funcionando;
+- n8n self-hosted funcionando localmente;
+- Ollama instalado e modelo `llama3.2:latest` disponível;
+- FastAPI integrado ao ecossistema;
+- PostgreSQL integrado ao protótipo;
+- frontend para cadastro e visualização da análise funcionando;
+- participantes sendo cadastrados e armazenados no banco;
+- comunicação entre FastAPI e n8n validada;
+- integração com Ollama/Llama 3.2 funcionando;
+- resposta estruturada com `perfil`, `destaque`, `oportunidade` e `mensagem`;
+- validação da resposta da IA no backend;
+- teste ponta a ponta do ecossistema realizado em 05/09/2026;
+- fluxo `Frontend -> FastAPI -> PostgreSQL -> n8n -> IA -> validação -> Frontend` validado;
+- erros de interpretação da IA identificados por meio dos testes;
+- classificação do IMC transferida para uma regra determinística no backend;
+- `classificacao_imc` adicionada ao payload enviado ao n8n;
+- erro de importação da função `classificar_imc` identificado e corrigido;
+- classificação do IMC validada em diferentes faixas em 10/09/2026;
+- funcionamento da Mark I confirmado pelo Swagger e pelo frontend utilizando Live Server.
+
+### Em andamento
+
+- consolidar a documentação técnica e as evidências dos testes da Mark I;
+- manter o registro de testes, erros encontrados, causas e correções;
+- definir gradualmente as regras determinísticas dos demais indicadores;
+- alinhar o significado e as unidades dos indicadores com a futura etapa de IoT;
+- revisar o contrato final de entrada, payload interno e saída;
+- preparar o ecossistema para receber futuramente os dados reais das estações e sensores.
+
+## Próximos passos do projeto final
+
+1. Consolidar a documentação e as evidências dos testes da Mark I.
+2. Padronizar e versionar o JSON de entrada, payload interno e resposta.
+3. Definir as regras oficiais de cálculo e classificação dos demais indicadores antes da interpretação pela IA.
+4. Integrar os indicadores calculados a partir dos dados reais do IoT quando essa etapa estiver disponível.
+5. Refinar as instruções da IA com o significado e a unidade correta de cada indicador.
+6. Impedir que a IA invente unidades, classificações ou conclusões não sustentadas pelos dados.
+7. Criar testes automatizados para modelos, regras determinísticas, payload, validação e rotas.
+8. Melhorar o tratamento de erros, logs e rastreabilidade das chamadas entre FastAPI, PostgreSQL, n8n e IA.
+9. Revisar segurança, organização do código e desempenho antes da versão de apresentação.
+10. Executar testes completos utilizando os participantes e dados definidos pelo projeto.
+11. Preparar a apresentação e a documentação acadêmica final.
