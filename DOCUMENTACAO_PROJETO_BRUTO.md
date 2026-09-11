@@ -13,7 +13,7 @@ A documentação será ampliada conforme novas funcionalidades, testes e integra
 
 Esta seção registra quando cada etapa foi realizada para que a evolução do projeto possa ser compreendida por pessoas técnicas e não técnicas.
 
-Os registros históricos são mantidos mesmo após a evolução do projeto, permitindo visualizar como a arquitetura, os testes e o entendimento das tecnologias evoluíram ao longo do desenvolvimento.
+Os registros históricos são mantidos após a evolução do projeto, permitindo visualizar como a arquitetura, os testes e o entendimento das tecnologias evoluíram ao longo do desenvolvimento.
 
 ### 23/08/2026 - Infraestrutura e teste de conexão
 
