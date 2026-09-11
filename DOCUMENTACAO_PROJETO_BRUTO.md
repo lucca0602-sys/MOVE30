@@ -1,5 +1,4 @@
 
-````markdown
 # Documentação Projeto SETOR DE IA
 
 ## Objetivo
