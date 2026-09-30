@@ -670,3 +670,212 @@ A experiência com a classificação do IMC demonstrou que regras objetivas deve
 A partir desses resultados, os testes do protótipo passam a servir como referência técnica para as próximas etapas de desenvolvimento e integração do MOVE30.
 
 ---
+## 30/09/2026 - Evolução da MARK II e integração com PostgreSQL
+
+Foi iniciada a migração experimental do MOVE30 para uma estrutura mais próxima da MARK II.
+
+### Alterações realizadas
+
+- limpeza dos 37 participantes de teste existentes na base;
+- recriação da tabela `participantes`;
+- configuração do campo `id` com incremento automático;
+- inclusão dos dados brutos do participante:
+  - `nome`;
+  - `idade`;
+  - `peso`;
+  - `altura`;
+  - `fas`;
+  - `fc_pre_teste`;
+  - `fc_pos_teste`;
+  - `tipo_teste`;
+  - `velocidade_teste`;
+- remoção dos indicadores calculados manualmente do frontend;
+- atualização do formulário para receber somente dados brutos;
+- criação dos tipos de teste:
+  - `light`: 6 km/h;
+  - `moderate`: 10 km/h;
+  - `hard`: 14 km/h.
+
+### Processamento determinístico no Analytics
+
+O backend passou a calcular os indicadores antes do envio para a inteligência artificial.
+
+IMC:
+
+`IMC = peso / altura²`
+
+Resistência:
+
+`resistencia = ((velocidade - 6) / (14 - 6)) * 100`
+
+Resultados dos protocolos:
+
+- `light`: 6 km/h -> resistência 0.00;
+- `moderate`: 10 km/h -> resistência 50.00;
+- `hard`: 14 km/h -> resistência 100.00.
+
+Índice MOVE:
+
+`FAS_normalizado = ((FAS - 1) / 9) * 100`
+
+`indice_move = (FAS_normalizado + resistencia) / 2`
+
+Exemplo:
+
+- FAS = 5;
+- FAS normalizado = 44.44;
+- resistência = 50.00;
+- Índice MOVE = 47.22.
+
+Os valores calculados são armazenados no PostgreSQL antes da montagem do payload enviado ao n8n.
+
+### Alterações no modelo e na persistência
+
+O modelo `ParticipantIndicators` passou a validar:
+
+- `nome`;
+- `idade`;
+- `peso`;
+- `altura`;
+- `fas`;
+- `fc_pre_teste`;
+- `fc_pos_teste`;
+- `tipo_teste`.
+
+O backend passou a salvar:
+
+- `nome`;
+- `idade`;
+- `peso`;
+- `altura`;
+- `fas`;
+- `fc_pre_teste`;
+- `fc_pos_teste`;
+- `tipo_teste`;
+- `velocidade_teste`;
+- `imc`;
+- `resistencia`;
+- `indice_move`.
+
+O campo `tipo_teste` aceita somente:
+
+- `light`;
+- `moderate`;
+- `hard`.
+
+### Alterações no payload enviado ao n8n
+
+O payload passou a conter:
+
+- dados físicos do participante;
+- FAS;
+- BPM pré-teste;
+- BPM pós-teste;
+- tipo do teste;
+- velocidade do teste;
+- IMC calculado;
+- classificação determinística do IMC;
+- resistência calculada;
+- Índice MOVE calculado.
+
+Também foi corrigida a conversão dos valores `NUMERIC` retornados pelo PostgreSQL para tipos compatíveis com JSON.
+
+### Alterações no frontend
+
+O formulário deixou de solicitar indicadores calculados manualmente.
+
+Foram removidos:
+
+- IMC;
+- Atividade;
+- Resistência;
+- Índice MOVE.
+
+Foram adicionados:
+
+- Peso;
+- Altura;
+- FAS;
+- BPM pré-teste;
+- BPM pós-teste;
+- Tipo de teste.
+
+O frontend passou a enviar os dados brutos para o FastAPI, deixando os cálculos sob responsabilidade do Analytics.
+
+### Integração com a IA
+
+O fluxo integrado foi validado utilizando:
+
+Frontend -> FastAPI -> PostgreSQL -> Analytics -> n8n -> Ollama/Llama 3.2 -> resposta estruturada -> frontend.
+
+A IA passou a receber valores previamente calculados pelo sistema.
+
+Foi reforçado no prompt do n8n que a IA:
+
+- não deve calcular IMC;
+- não deve calcular resistência;
+- não deve calcular o Índice MOVE;
+- não deve inventar indicadores;
+- não deve interpretar BPM como força;
+- não deve exibir valores `null`;
+- deve informar quando um dado ainda não estiver disponível;
+- deve retornar somente os campos `perfil`, `destaque`, `oportunidade` e `mensagem`.
+
+### Problemas encontrados e corrigidos
+
+Durante os testes foram identificados e corrigidos:
+
+- referências antigas da MARK I no frontend;
+- referências antigas no payload do n8n;
+- ausência das colunas `tipo_teste` e `velocidade_teste`;
+- quantidade incorreta de placeholders no comando `INSERT`;
+- valores `Decimal` não serializáveis no payload JSON;
+- conflito de comunicação utilizando a porta `8000`;
+- atualização do FastAPI para a porta `8002`;
+- erro de CORS causado por falhas internas do backend;
+- interpretação incorreta dos campos BPM pela IA;
+- exibição do valor `null` para o Índice MOVE.
+
+### Testes realizados
+
+Foram realizados testes de:
+
+- validação do modelo com Pydantic;
+- cálculo do IMC;
+- cálculo da resistência;
+- cálculo do Índice MOVE;
+- persistência dos valores calculados no PostgreSQL;
+- cadastro pelo frontend;
+- montagem do payload n8n;
+- serialização do payload para JSON;
+- comunicação com o n8n;
+- comunicação com o Ollama;
+- retorno da análise ao frontend;
+- funcionamento do FastAPI na porta `8002`.
+
+### Resultado da etapa
+
+O fluxo básico da MARK II foi validado com sucesso.
+
+O sistema agora:
+
+recebe dados brutos -> valida os dados -> calcula IMC, resistência e Índice MOVE -> salva os resultados no PostgreSQL -> monta o payload estruturado -> envia os dados para o n8n -> recebe a interpretação da IA -> exibe o resultado no frontend.
+
+A separação de responsabilidades ficou definida da seguinte forma:
+
+- Analytics: calcula e processa dados determinísticos;
+- PostgreSQL: armazena dados brutos e resultados calculados;
+- n8n/Ollama/IA: interpreta os resultados recebidos;
+- frontend: coleta dados e exibe a resposta.
+
+### Pendências
+
+- melhorar a linguagem da IA para evitar recomendações clínicas;
+- revisar a interpretação do IMC para diferentes faixas etárias;
+- criar o dashboard dos participantes;
+- disponibilizar os dados calculados para o Power BI;
+- criar testes automatizados para o Analytics;
+- revisar o prompt final do n8n;
+- revisar a segurança e o tratamento de erros;
+- validar o sistema com participantes reais;
+- definir a integração futura com dados provenientes do IoT.
