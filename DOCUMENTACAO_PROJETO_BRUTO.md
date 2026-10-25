@@ -879,3 +879,91 @@ A separação de responsabilidades ficou definida da seguinte forma:
 - revisar a segurança e o tratamento de erros;
 - validar o sistema com participantes reais;
 - definir a integração futura com dados provenientes do IoT.
+
+---
+
+## 25/10/2026 - Atualização do fluxo MOVE30, dos dashboards e da estrutura de hardware
+
+Esta seção registra uma etapa posterior do protótipo experimental. Os relatos anteriores foram preservados como histórico das versões e decisões da época; as mudanças abaixo descrevem o fluxo mais recente no repositório.
+
+### Novo fluxo do formulário de cadastro
+
+O formulário público foi reorganizado para funcionar no totem com poucos campos obrigatórios. O participante informa:
+
+- nome;
+- idade;
+- FAS — frequência de atividade semanal, de 1 a 7;
+- nível do teste: leve, moderado ou intenso.
+
+Foi adicionada uma seção recolhível de medições manuais opcionais. Quando as medições já estiverem disponíveis, a equipe pode preencher os quatro campos:
+
+- peso;
+- altura;
+- frequência cardíaca antes do teste;
+- frequência cardíaca depois do teste.
+
+A interface aceita o conjunto completo dessas quatro medições ou deixa todas em branco. A API continua aceitando medições ausentes para que o cadastro possa ser feito antes da coleta pelo hardware.
+
+O frontend envia o cadastro para o FastAPI. Quando os quatro indicadores manuais foram incluídos, solicita também a geração da análise, mas não mostra o resultado da IA na tela do totem. A interpretação fica disponível no dashboard. Quando as medições não foram incluídas, a avaliação é registrada como pendente de dados suficientes para análise.
+
+### Atualização dos cálculos e dos indicadores
+
+O FC Score foi definido como a média aritmética das frequências cardíacas pré e pós-teste, expresso em bpm:
+
+`FC Score = (FC pré + FC pós) / 2`
+
+O valor só é calculado quando as duas frequências estão disponíveis.
+
+Peso e altura são opcionais no cadastro inicial. O IMC é calculado quando ambos estão preenchidos. A velocidade do teste e a resistência continuam derivadas do nível selecionado, conforme os protocolos já registrados nesta documentação.
+
+#### Nota de correção sobre o Índice MOVE
+
+A interpretação anterior do Índice MOVE como score individual de saúde foi corrigida. Na versão atual, o Índice MOVE representa o grupo e deve ser exibido somente no dashboard geral.
+
+O dashboard consolida a avaliação mais recente de cada participante e calcula o indicador coletivo a partir das médias do FAS normalizado e da resistência. Para FAS na escala de 1 a 7, a normalização usada no código atual é:
+
+`FAS normalizado = ((FAS - 1) / 6) * 100`
+
+A fórmula anterior registrada em 30/09 com divisor 9 não corresponde à escala de FAS 1–7 e não deve ser usada para reproduzir o cálculo atual. O Índice MOVE coletivo é a média do FAS normalizado e da resistência, ambos em escala de 0 a 100. Ele não é exibido no dashboard pessoal.
+
+### Dashboards pessoal e geral
+
+Os dashboards foram reorganizados em Streamlit com uma identidade visual esportiva e tecnológica:
+
+- fundo azul-marinho e painéis escuros;
+- destaques em ciano, verde-turquesa e dourado;
+- ícones SVG reutilizáveis para indicadores e seções;
+- gráficos Plotly com cores consistentes, legendas compactas, escalas e tooltips;
+- layout amplo para apresentação em monitores;
+- atualização automática dos dados a cada 10 segundos enquanto o dashboard está aberto.
+
+O dashboard pessoal mostra os indicadores e o histórico de avaliações de uma pessoa, incluindo FC pré, FC pós, FC Score e a análise da IA quando disponível.
+
+O dashboard geral consolida as avaliações mais recentes do grupo. Apresenta médias de frequência cardíaca, Índice MOVE coletivo, distribuição dos níveis de teste, resultados recentes e gráficos comparativos. A exibição de nomes completos é controlada por uma opção no próprio painel.
+
+O cálculo do Índice MOVE permanece restrito ao dashboard geral para que não seja interpretado como uma classificação individual.
+
+### Preparação para a ESP32
+
+Foi criada uma estrutura de ingestão em `POST /api/v1/hardware/measurements`. A rota:
+
+- autentica o dispositivo pelo cabeçalho `X-Device-Key`;
+- valida identificador, ID único da mensagem, data com fuso horário e lista de medições;
+- armazena o lote recebido sem converter valores desconhecidos em indicadores MOVE30;
+- reconhece reenvios idênticos do mesmo lote e rejeita reutilização do ID com conteúdo diferente.
+
+A estrutura não inventa leituras de sensores e ainda não associa lotes recebidos a participantes ou avaliações. A associação ao cadastro e o contrato final de nomes e unidades dos sensores dependem das definições do hardware.
+
+Foram adicionados arquivos de migração para a tabela de lotes de hardware e para permitir valores ausentes nas medições durante o cadastro. Em uma instalação com banco existente, as migrações correspondentes precisam ser aplicadas antes de usar essas partes do fluxo.
+
+### Estado e pendências desta etapa
+
+O código do formulário, da API e dos dashboards foi atualizado no repositório. A documentação preserva o histórico anterior e registra a evolução do protótipo.
+
+Permanecem como etapas futuras:
+
+- aplicar as migrações no banco de dados de cada ambiente;
+- fechar o mapeamento entre leituras da ESP32 e uma avaliação específica;
+- definir nomes, unidades, frequência e validação das leituras do hardware;
+- gerar ou atualizar a análise quando uma avaliação sem medições receber dados válidos do dispositivo;
+- validar o fluxo completo com a ESP32 real, sem substituir essa validação por dados simulados.
