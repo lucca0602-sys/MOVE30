@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="58" viewBox="0 0 260 58">
+  <path d="M5 30h16l8-17 10 34 10-27 8 10h17" fill="none" stroke="#1bb8ff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="83" y="39" fill="#f4f8ff" font-family="Arial, sans-serif" font-size="30" font-weight="700">MOVE</text>
+  <text x="174" y="39" fill="#1bb8ff" font-family="Arial, sans-serif" font-size="30" font-weight="700">30</text>
+</svg>

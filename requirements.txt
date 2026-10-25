@@ -1,6 +1,11 @@
+# Python runtime dependencies for the MOVE 30 local system
 fastapi
 uvicorn[standard]
 pydantic
+psycopg[binary]
 python-dotenv
-pytest
-httpx2
+requests
+streamlit>=1.65
+pandas
+plotly
+qrcode[pil]

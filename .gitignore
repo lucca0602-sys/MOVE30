@@ -1,6 +1,8 @@
+# Local settings and runtime files
+.env
 .venv/
 venv/
 __pycache__/
 *.py[cod]
-.env
 .pytest_cache/
+.streamlit/secrets.toml
