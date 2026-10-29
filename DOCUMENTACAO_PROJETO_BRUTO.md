@@ -962,6 +962,175 @@ O código do formulário, da API e dos dashboards foi atualizado no repositório
 
 Permanecem como etapas futuras:
 
+
+# MOVE30 — Validação da comunicação ESP32-S3 ↔ FastAPI
+
+**Data:** 29/10/2026  
+**Status:** Concluído — teste básico de comunicação validado  
+**Etapa:** Integração de hardware
+
+## 1. Objetivo
+
+Validar a comunicação entre a placa ESP32-S3 e o backend FastAPI do MOVE30 por meio de uma requisição HTTP `GET /health`.
+
+O teste foi realizado sem reservar avaliações, enviar medições ou alterar dados dos participantes.
+
+## 2. Ambiente utilizado
+
+- **Microcontrolador:** ESP32-S3
+- **Backend:** FastAPI
+- **Servidor:** Uvicorn
+- **Porta do backend:** `8002`
+- **IP local do notebook:** `192.168.15.99`
+- **Endpoint testado:** `/health`
+- **Modo de firmware:** `MODO_TESTE = 6`
+- **Protocolo:** HTTP na rede local
+
+## 3. Configuração
+
+### URL do backend
+
+No arquivo `config.h`:
+
+```cpp
+#define API_URL "http://192.168.15.99:8002"
+```
+
+O IP deve ser atualizado caso o notebook receba outro endereço na rede local.
+
+### Inicialização do backend
+
+Com o terminal aberto na raiz do projeto:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8002
+```
+
+O servidor utiliza `0.0.0.0` para aceitar conexões pela rede local, sujeito às regras do firewall.
+
+## 4. Testes executados
+
+### Teste 1 — Backend local
+
+Comando:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8002/health
+```
+
+Resultado:
+
+```text
+status
+------
+ok
+```
+
+**Resultado:** aprovado.
+
+### Teste 2 — Backend pelo IP da rede
+
+Comando:
+
+```powershell
+Invoke-RestMethod http://192.168.15.99:8002/health
+```
+
+Resultado:
+
+```text
+status
+------
+ok
+```
+
+**Resultado:** aprovado.
+
+O backend respondeu corretamente pelo endereço de rede do notebook.
+
+### Teste 3 — ESP32-S3 conectado ao backend
+
+Foi configurado o modo de teste 6 no firmware para:
+
+1. Inicializar o Wi-Fi.
+2. Verificar a conexão.
+3. Executar uma requisição HTTP `GET /health`.
+4. Exibir o código HTTP e o corpo da resposta no Monitor Serial.
+5. Encerrar o teste sem iniciar o fluxo de avaliações.
+
+Resultado observado no Monitor Serial:
+
+```text
+================================
+       MOVE30 - ESP32-S3
+================================
+MODO_TESTE = 6
+
+[TESTE 6] Teste de comunicação com o backend
+[TESTE 6] Conectando ao Wi-Fi...
+Conectando ao Wi-Fi......
+Wi-Fi ok.
+IP do ESP32: 192.168.15.Iniciando requisicao HTTP...
+Enviando GET...
+HTTP: 200
+Resposta do backend:
+{"status":"ok"}
+BACKEND OK
+[TESTE 6] BACKEND OK.
+[TESTE 6] Teste finalizado.
+```
+
+**Resultado:** aprovado.
+
+Observação: a impressão do endereço IP apareceu incompleta e concatenada com a mensagem seguinte no log. Isso não impediu a requisição, que retornou HTTP 200. A saída serial poderá ser ajustada posteriormente para melhorar a legibilidade.
+
+## 5. O que foi validado
+
+- Comunicação Wi-Fi entre o ESP32-S3 e a rede local.
+- Backend FastAPI em execução.
+- Acesso ao endpoint `/health` pelo notebook usando o IP da rede.
+- Requisição HTTP originada pelo ESP32-S3.
+- Recebimento de resposta HTTP `200 OK`.
+- Retorno do corpo JSON `{"status":"ok"}`.
+- Funcionamento do modo de diagnóstico sem executar o fluxo de medições.
+
+## 6. O que ainda não foi validado
+
+Este teste comprova apenas a comunicação básica entre o hardware e o backend. Ainda não confirma:
+
+- Reserva de avaliações pela API.
+- Autenticação das rotas de hardware.
+- Envio e persistência de medições.
+- Calibração e estabilidade da balança.
+- Leituras reais dos sensores de altura e frequência cardíaca.
+- Funcionamento do fluxo sequencial completo.
+- Atualização dos dashboards com os dados reais.
+
+## 7. Próximas etapas
+
+Quando a balança estiver disponível, executar os testes na seguinte ordem:
+
+1. **Balança:** verificar leitura bruta, calibração e estabilidade do peso.
+2. **Altura:** validar presença da pessoa e estabilidade da leitura.
+3. **Frequência cardíaca:** validar o sensor em repouso e após o teste.
+4. **API de hardware:** testar reserva de avaliação e envio de medições controladas.
+5. **Fluxo completo:** validar a sequência altura → peso → FC em repouso → FC pós-teste.
+6. **Persistência:** confirmar os dados no banco e a atualização dos dashboards.
+7. **Integração final:** corrigir os problemas encontrados e repetir os testes.
+
+## 8. Estado atual
+
+**Etapa concluída:** comunicação básica ESP32-S3 ↔ FastAPI.
+
+**Próxima etapa:** validação individual dos sensores e da balança, seguida da integração com o fluxo real de avaliações.
+
+Até o início dos testes físicos, manter `MODO_TESTE = 6` para diagnóstico, evitando iniciar o fluxo normal de avaliações acidentalmente.
+
+---
+
+**Registro de desenvolvimento:** teste executado em 29/10/2026. A resposta HTTP 200 foi observada diretamente no Monitor Serial do ESP32-S3.
+
+
 - aplicar as migrações no banco de dados de cada ambiente;
 - fechar o mapeamento entre leituras da ESP32 e uma avaliação específica;
 - definir nomes, unidades, frequência e validação das leituras do hardware;
