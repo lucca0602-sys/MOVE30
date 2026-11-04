@@ -1136,3 +1136,102 @@ Até o início dos testes físicos, manter `MODO_TESTE = 6` para diagnóstico, e
 - definir nomes, unidades, frequência e validação das leituras do hardware;
 - gerar ou atualizar a análise quando uma avaliação sem medições receber dados válidos do dispositivo;
 - validar o fluxo completo com a ESP32 real, sem substituir essa validação por dados simulados.
+
+
+---
+
+## 03/11 e 04/11/2026 - Integração do hardware com o back-end e primeiro fluxo completo real
+
+### Objetivo
+
+Conectar a ESP32-S3 ao back-end de ponta a ponta: cadastro, peso, frequência cardíaca antes e depois da corrida, análise da IA e dashboards.
+
+### Fluxo definido
+
+1. A pessoa se cadastra no totem, com nome, e-mail, altura, idade, FAS e nível do teste.
+2. A estação reserva o cadastro pendente mais antigo. Atende uma pessoa por vez e não identifica quem está na balança.
+3. A balança envia o peso quando a leitura fica estável.
+4. O sensor mede a FC de repouso.
+5. A pessoa tira o dedo e faz a corrida.
+6. O sensor mede a FC depois, no mínimo 60 s após a FC de repouso.
+7. O back-end salva cada etapa, envia os dados à IA e mostra o resultado nos dashboards.
+
+A altura é manual por enquanto. O sensor de altura não é usado neste fluxo.
+
+### Balança
+
+- Quatro células de 50 kg com HX711, nos pinos DT=16 e SCK=17.
+- Fator de calibração provisório: 23,05 contagens/g, usado no firmware como 23050 contagens/kg.
+- Só envia o peso depois de cerca de 1 s de leitura estável, com variação de até 0,5 kg e acima de 10 kg.
+- Se a pessoa sair durante a leitura, a medição recomeça.
+- A tara é feita ao ligar, com a balança vazia, ou pelo comando `t` no Monitor Serial.
+
+### Problemas encontrados e corrigidos no hardware
+
+| Sintoma | Causa | Correção |
+|---|---|---|
+| Sensor de batimentos não encontrado | SDA e SCL invertidos na fiação | `PIN_SDA` 9 e `PIN_SCL` 8 no `config.h`, confirmados por varredura I2C |
+| Balança não reagia ao peso, com contagens em torno de 1.900 | Fio do A− solto no HX711 | Fio encaixado; as contagens foram para cerca de 460.000 |
+| Placa travava ao iniciar a balança | Suspeita na espera sem limite de tempo da biblioteca HX711; a linha exata não foi identificada | Leitura direta do HX711, com limite de tempo |
+| Batimentos não eram reconhecidos | `checkForBeat` descarta pulsos com variação acima de 1.000, e o sinal real chega a cerca de 2.500 | Detector de batidas próprio, testado antes no sinal real gravado |
+| Saída serial não aparecia pela USB | Opção da placa desativada | Compilação com `CDCOnBoot=cdc` |
+| Placa não alcançava o back-end | O IP do notebook mudou na rede | `API_URL` atualizado; ele precisa ser revisto em cada rede |
+
+### Mudanças no firmware
+
+- Wi-Fi movido para `secrets.h`, fora do controle de versão.
+- Reenvio de leituras em falhas de rede, sem duplicar, e descarte quando o servidor recusa a leitura.
+- Trava da corrida antes da FC pós-teste.
+- Mensagens de diagnóstico no Monitor Serial.
+
+### Mudanças no back-end e nos dashboards
+
+- Migrações `004` (e-mail, data de criação e cancelamento) e `005` (proteção dos dados e novas tentativas da IA).
+- O banco recusa sobrescrever medições e análises, e recusa apagar participantes e leituras brutas.
+- O botão de emergência cancela a avaliação sem apagar o que foi medido.
+- Validação: altura de 1,00 a 2,20 m, peso de 10 a 200 kg e FC de 30 a 220 bpm.
+- Pessoas com o mesmo nome ficam separadas.
+- Se a IA falhar, as medidas continuam salvas e a análise é tentada de novo a cada 10 minutos.
+- Nome e e-mail deixaram de ser enviados à IA. O e-mail também não é devolvido pela API.
+- Backup automático em `backups/`, com script de restauração que só insere o que falta.
+- Nova página **Estação de medição**, que mostra ao vivo quem está na estação e em qual etapa.
+- Dashboard geral com médias de peso, altura, FC antes, FC depois e variação da FC, usando só avaliações completas e válidas.
+- Corrigido o erro 500 no cálculo do IMC entre `float` e `Decimal`, e a disputa entre duas estações pela mesma pessoa.
+
+### Testes realizados
+
+**Automatizados, com IA simulada, em banco de teste separado:** 56 testes aprovados, incluindo:
+
+- três participantes em sequência, dois com o mesmo nome, com falha da IA, reenvio de leitura e reinício da API no meio do fluxo;
+- nove participantes em três estações simultâneas, sem troca de leituras;
+- backup e restauração;
+- dashboards com 0 e com 400 participantes.
+
+**Com hardware real, em 04/11/2026:**
+
+| Etapa | Resultado |
+|---|---|
+| Altura (cadastro) | 1,75 m |
+| Peso (balança) | 69,72 kg |
+| IMC (calculado) | 22,77 |
+| FC de repouso (sensor) | 67 bpm |
+| FC depois (sensor) | 79 bpm |
+| Análise da IA (n8n + Ollama) | Salva na primeira tentativa |
+
+Esse foi o primeiro fluxo completo com a balança e o sensor reais.
+
+### O que ainda não foi validado
+
+- FC depois de uma corrida de verdade: os 79 bpm vieram de um intervalo curto, e batimentos altos só foram testados em simulação.
+- Peso comparado com outra balança e fator de calibração definitivo.
+- Três pessoas seguidas com o hardware real.
+- Reconexão automática do Wi-Fi depois de queda do roteador: a correção foi escrita, mas não foi testada.
+
+### Pendências
+
+- Configurar a rede da escola e o `API_URL`, e gravar o firmware de novo.
+- Soldar as emendas das células.
+- Definir a hospedagem para o totem e a TV no dia.
+- Revisar o prompt do n8n para a análise considerar a FC antes e depois.
+- Remover os dados de teste do banco antes da feira, com confirmação.
+- Enviar a este repositório o código desta etapa, que está na cópia local `MOVE30-TEST`.
