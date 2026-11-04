@@ -1140,7 +1140,7 @@ Até o início dos testes físicos, manter `MODO_TESTE = 6` para diagnóstico, e
 
 ---
 
-## 03/11 e 04/11/2026 - Integração do hardware com o back-end e primeiro fluxo completo real
+## 03/11/2026 - Integração do hardware com o back-end e primeiro fluxo completo real
 
 ### Objetivo
 
