@@ -1,44 +1,164 @@
 # MOVE 30
 
-Estação de avaliação física da feira de ciências: cadastro no totem, peso e batimentos pelo hardware (ESP32-S3), análise por IA (n8n + Ollama) e dashboards.
+Estação de avaliação física da feira de ciências. Dois fluxos:
 
-## Como rodar
+- **Teste rápido** (principal no evento): a pessoa informa nome, idade, peso, altura e batimentos em repouso → IA analisa → QR Code com o resultado dela.
+- **Avaliação completa** (hardware): cadastro no totem → ESP32-S3 mede peso e FC antes/depois da corrida → IA → dashboards.
 
-Pré-requisitos: PostgreSQL, Docker com n8n e Ollama, e `.env` preenchido (modelo em `.env.example`).
+## Arquitetura
 
-1. **Banco:** aplique uma vez, em ordem, os arquivos de `backend/migrations/` que ainda não foram aplicados.
-2. **API:** `.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8002`
-3. **Dashboards:** `.\.venv\Scripts\python.exe -m streamlit run Dashboard\app.py`
-4. **Totem:** abra `frontend/index.html` com o Live Server na porta 5500.
-5. **Firmware:** abra `linha_medicao/linha_medicao/linha_medicao.ino` no Arduino IDE, confira `secrets.h` e `API_URL` em `config.h` (o IP do computador pode mudar) e grave. Deixe a balança vazia ao ligar.
+```
+            INTERNET                                  │            PC DO EVENTO (rede local)
+                                                      │
+ Celular / TV ──► Vercel (front estático)             │
+                  /         teste rápido + QR         │
+                  /dash/TOKEN  resultado de 1 pessoa  │
+                  /geral    painel só com médias      │
+                     │                                │
+                     │ fetch https://PC.tailXXXX.ts.net/public/...
+                     ▼                                │
+              Tailscale Funnel ───────────────────────┼──► App público  127.0.0.1:8003  (backend.public_app)
+              (só a porta 8003)                       │        │  só rotas /public/*
+                                                      │        ▼
+                                                      │    PostgreSQL :5432 ◄── API interna :8002 (backend.main)
+                                                      │        ▲                  ▲   ▲
+                                                      │        │                  │   └── ESP32 (Wi-Fi local)
+                                                      │    n8n :5678 ──► Ollama :11434 (llama3.2)
+                                                      │                           └── Streamlit :8501 (equipe/TV local)
+```
 
-## Fluxo na estação
+**O que fica exposto na internet:** só o app público (porta 8003), com 4 rotas:
 
-A estação atende uma pessoa por vez, na ordem do cadastro. A página **Estação de medição** do dashboard mostra quem deve estar na balança; confira antes de cada pessoa subir.
+| Rota | O que faz |
+|---|---|
+| `GET /public/health` | teste de vida |
+| `POST /public/teste` | salva o teste rápido e dispara a IA em segundo plano; devolve só um `token` |
+| `GET /public/resultado/{token}` | resultado de UMA pessoa (primeiro nome, medidas, análise). Sem e-mail nem ID |
+| `GET /public/coletivo` | médias e contagens do grupo (escondidas com menos de 3 pessoas) |
+
+**Nunca expostos:** PostgreSQL, Ollama, n8n, API interna (`/participantes`, hardware, estação) e Streamlit.
+O token do QR é um UUID aleatório: não dá pra chutar o link de outra pessoa (o ID sequencial não aparece em lugar nenhum público).
+
+| Peça | Onde roda | Papel |
+|---|---|---|
+| `frontend/teste.html`, `dash.html`, `geral.html` | Vercel | páginas públicas |
+| `frontend/index.html` | Live Server local | cadastro do totem (fluxo com hardware) |
+| `backend.public_app` (8003) | PC, só 127.0.0.1 | API pública, atrás do Funnel |
+| `backend.main` (8002) | PC, rede local | API interna: ESP32, Streamlit, workers de backup e de retry da IA |
+| Streamlit (8501) | PC, rede local | ferramenta da equipe: estação, dash com nomes, reprocessar IA |
+| n8n + Ollama | PC | análise da IA (prompt em [docs/prompt-ia-n8n.md](docs/prompt-ia-n8n.md)) |
+
+## Variáveis de ambiente
+
+### `.env` (PC) — modelo em `.env.example`
+
+| Variável | Exemplo | Para quê |
+|---|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `localhost`, `5432`… | PostgreSQL |
+| `N8N_WEBHOOK_URL` | `http://localhost:5678/webhook/...` | webhook da IA |
+| `ESP32_API_KEY` | | chave do hardware |
+| `CORS_ORIGINS` | `http://localhost:5500,https://move30.vercel.app` | quem pode chamar as APIs (sem barra no fim) |
+| `CORS_ORIGIN_REGEX` | `^https://move30(-[a-z0-9-]+)?\.vercel\.app$` | opcional: previews da Vercel |
+| `IA_TIMEOUT_S` | `180` | tempo máximo de uma chamada à IA |
+| `IA_INTERVALO_S` | `600` | espera antes de tentar a IA de novo |
+
+### Vercel
+
+| Variável | Valor |
+|---|---|
+| `MOVE30_API_URL` | URL do Funnel, ex.: `https://meu-pc.tail1234.ts.net` (sem barra no fim) |
+
+O build (`frontend/build-config.mjs`) grava essa URL em `js/config.js`. **Mudou a variável → faça Redeploy.**
+
+## Configuração única (antes do evento)
+
+### 1. Banco
+Aplique em ordem as migrations de `backend/migrations/` que faltam (a `006` já foi aplicada no banco real em 07/11).
+
+### 2. Tailscale Funnel (URL fixa, grátis, sem domínio)
+1. Instale: https://tailscale.com/download/windows e faça login (Google/GitHub servem).
+2. No painel https://login.tailscale.com/admin/dns ative **MagicDNS** e **HTTPS Certificates**.
+3. Em https://login.tailscale.com/admin/acls habilite o Funnel para o seu PC (o próprio `tailscale funnel` mostra um link para isso na primeira vez).
+4. Com o app público rodando: `.\scripts\funnel.ps1`. Ele mostra a URL `https://NOME-DO-PC.tailXXXX.ts.net`, **que não muda entre reinícios**.
+5. Teste no celular com o Wi-Fi desligado (4G): `https://NOME-DO-PC.tailXXXX.ts.net/public/health` → `{"status":"ok"}`.
+
+> O Funnel publica **só a porta 8003**. O script roda `tailscale funnel reset` antes, para não sobrar nenhuma publicação antiga.
+
+### 3. Vercel
+1. https://vercel.com → **Add New → Project** → importe o repositório `lucca0602-sys/IA` (branch `melhorias-final` ou `main` depois do merge).
+2. **Root Directory:** `frontend`. Framework: **Other**. O resto vem do `frontend/vercel.json`.
+3. **Environment Variables:** `MOVE30_API_URL` = URL do Funnel.
+4. Deploy. Anote a URL `https://SEU-PROJETO.vercel.app` e coloque em `CORS_ORIGINS` no `.env` do PC. Reinicie as APIs.
+
+## Dia do evento
+
+**Ligar (nesta ordem):**
+1. PostgreSQL (serviço do Windows) e Docker Desktop (n8n). O Ollama abre sozinho com o Windows.
+2. `.\scripts\subir_evento.ps1` abre 3 janelas (API interna, app público, Streamlit) e testa cada serviço.
+3. `.\scripts\funnel.ps1`
+4. Num celular no 4G: abra `https://SEU-PROJETO.vercel.app`, faça um teste com o nome "TESTE EQUIPE" e confira se o QR abre o resultado.
+
+**Telas:**
+- Participantes: `https://SEU-PROJETO.vercel.app` (totem/tablet ou o celular da pessoa).
+- TV: `https://SEU-PROJETO.vercel.app/geral` (atualiza a cada 5 s) ou, sem internet, `http://IP-DO-PC:8501` (Streamlit, rede local).
+- Equipe: Streamlit em `http://IP-DO-PC:8501` (estação, dados completos, reprocessar IA).
+- O PC fica livre para o Serial Monitor do Arduino: nenhum desses serviços precisa da tela dele.
+
+**Memória (PC com 8 GB):** Ollama (~2,5 GB) + Docker/n8n + Postgres + Streamlit + Arduino IDE é apertado. Feche navegador, VS Code e o resto. Se ficar lento, feche o Streamlit (o `/geral` da Vercel cobre a TV).
+
+**A IA demora** (~1-2 min por pessoa na CPU). A tela mostra "Analisando..." e o QR já aparece antes; a pessoa pode ir embora e ver depois no link. Se a IA falhar, a API interna tenta de novo a cada 10 min (`IA_INTERVALO_S`).
+
+**Desligar:** `.\scripts\funnel.ps1 -Desligar` e feche as janelas.
+
+## Plano B — internet caiu
+
+O banco, a IA e as APIs são locais e continuam funcionando. Só o caminho Vercel/Funnel para.
+
+1. Conecte o PC e os celulares/totem **no mesmo Wi-Fi local** (roteador próprio ou celular roteando; o ESP32 só pega 2,4 GHz).
+2. Rode o front direto do PC, com as mesmas páginas e rotas:
+   ```powershell
+   .\.venv\Scripts\python.exe -m scripts.servir_front --rede
+   ```
+3. Descubra o IP do PC (`ipconfig` → IPv4, ex.: `192.168.0.10`) e use `http://192.168.0.10:8080` no totem/celulares. O QR gerado aponta para esse endereço e funciona na rede local.
+4. TV: `http://192.168.0.10:8080/geral` ou o Streamlit em `:8501`.
+5. Se o Windows perguntar, **permita** o Python na rede privada (firewall).
+6. Plano C (sem rede nenhuma): o totem roda no próprio PC em `http://127.0.0.1:8080`, e a pessoa fotografa a tela com a análise.
+
+Os resultados feitos no plano B ficam no mesmo banco. Quando a internet voltar, os links `/dash/TOKEN` da Vercel também abrem esses resultados.
+
+## Fluxo da estação (hardware)
+
+A estação atende uma pessoa por vez, na ordem do cadastro feito em `frontend/index.html`. A página **Estação de medição** do Streamlit mostra quem deve estar na balança. O teste rápido não entra nessa fila.
 
 1. Peso: a pessoa sobe e fica parada por cerca de 1 s.
 2. FC de repouso: dedo no sensor por cerca de 15 s.
 3. Corrida: a pessoa tira o dedo e corre.
 4. FC depois: dedo no sensor de novo, no mínimo 60 s depois da FC de repouso.
 
-O botão de emergência cancela a pessoa atual, sem apagar o que já foi medido. Para refazer a tara, envie `t` no Monitor Serial com a balança vazia.
+O botão de emergência cancela a pessoa atual sem apagar o que já foi medido. Para refazer a tara, envie `t` no Monitor Serial com a balança vazia. Firmware: `linha_medicao/linha_medicao/linha_medicao.ino` (confira `secrets.h` e `API_URL` em `config.h`; o IP do PC pode mudar).
 
 ## Proteção dos dados
 
-- Cada leitura é gravada no banco assim que chega, ligada ao ID do cadastro.
-- Se o envio falhar, a ESP32 guarda a leitura na memória e reenvia sem duplicar.
-- O banco recusa sobrescrever medição ou análise e recusa apagar participante. Uma correção deliberada exige um administrador desligar o gatilho `proteger_participante`.
-- Se a IA falhar, as medidas continuam salvas e a análise é tentada de novo a cada 10 minutos.
-- A API grava em `backups/` um arquivo novo sempre que os dados mudam, verificando a cada minuto. Essa pasta contém dados pessoais e fica fora do Git.
-- Para restaurar: `.\.venv\Scripts\python.exe -m scripts.restaurar_backup backups\arquivo.json`. Só insere o que falta.
+- Cada leitura é gravada assim que chega, ligada ao ID do participante. O banco recusa sobrescrever medição/análise e recusa apagar participante (gatilhos `proteger_participante` e `proteger_token_publico`).
+- Público vê só agregados (`/geral`, com mínimo de 3 pessoas) ou o resultado do próprio token. E-mail nunca sai do banco. Para a IA (local) vai só o primeiro nome.
+- Se a IA falhar, as medidas continuam salvas e a análise é tentada de novo.
+- A API interna grava em `backups/` um arquivo novo sempre que os dados mudam (pasta fora do Git, tem dados pessoais). Restaurar: `.\.venv\Scripts\python.exe -m scripts.restaurar_backup backups\arquivo.json`.
+
+## Rodar localmente (desenvolvimento)
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8002
+.\.venv\Scripts\python.exe -m uvicorn backend.public_app:app --host 127.0.0.1 --port 8003
+.\.venv\Scripts\python.exe -m scripts.servir_front          # http://127.0.0.1:8080 (teste, /dash, /geral)
+.\.venv\Scripts\python.exe -m streamlit run Dashboard\app.py
+```
 
 ## Testes
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest tests
+.\.venv\Scripts\python.exe -m scripts.testar_prompt        # prompt da IA com 5 perfis no Ollama local
 ```
 
-Os testes criam e apagam um banco separado, `move30_test`, e não tocam nos dados reais. Eles usam uma IA simulada.
-
-Mais detalhes em [docs/hardware-api.md](docs/hardware-api.md) e [docs/registration-flow.md](docs/registration-flow.md).
+Os testes criam e apagam um banco separado (`move30_test`) e usam uma IA simulada. Mais detalhes em [docs/hardware-api.md](docs/hardware-api.md) e [docs/registration-flow.md](docs/registration-flow.md).
