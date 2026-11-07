@@ -97,6 +97,8 @@ def listar_participantes():
                 participant.pop("indice_move", None)
                 # These routes have no authentication, so the e-mail stays in the database.
                 participant.pop("email", None)
+                # The public link (QR Code) is handed only to its owner.
+                participant.pop("token_publico", None)
             return participants
 
 
@@ -113,6 +115,7 @@ def buscar_participante_por_id(participant_id: int):
                 )
                 participant.pop("indice_move", None)
                 participant.pop("email", None)
+                participant.pop("token_publico", None)
             return participant
         
 
@@ -142,7 +145,8 @@ ANALISE_PENDENTE = """
     cancelada_em IS NULL
     AND perfil IS NULL
     AND peso IS NOT NULL AND altura IS NOT NULL
-    AND fc_pre_teste IS NOT NULL AND fc_pos_teste IS NOT NULL
+    AND fc_pre_teste IS NOT NULL
+    AND (fc_pos_teste IS NOT NULL OR tipo_avaliacao = 'simples')
     AND (ia_proxima_tentativa IS NULL OR ia_proxima_tentativa <= NOW())
 """
 
@@ -191,6 +195,7 @@ def status_estacoes() -> dict:
                 SELECT p.id, p.nome
                 FROM participantes AS p
                 WHERE p.cancelada_em IS NULL
+                  AND p.tipo_avaliacao = 'completa'
                   AND p.altura IS NOT NULL
                   AND (p.peso IS NULL OR p.fc_pre_teste IS NULL OR p.fc_pos_teste IS NULL)
                   AND NOT EXISTS (

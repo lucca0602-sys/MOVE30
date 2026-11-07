@@ -36,6 +36,20 @@ class ManualMeasurements(BaseModel):
         return self
 
     
+class TesteSimples(BaseModel):
+    """Teste sem corrida: o próprio participante informa as medidas."""
+    nome: str = Field(min_length=2, max_length=100)
+    idade: int = Field(ge=5, le=120)
+    peso: float = Field(ge=10, le=250)
+    altura: float = Field(ge=0.8, le=2.3)
+    fc_repouso: int = Field(ge=30, le=220)
+
+    @field_validator("nome", mode="before")
+    @classmethod
+    def normalize_nome(cls, value):
+        return " ".join(value.split()) if isinstance(value, str) else value
+
+
 class AnalysisResponse(BaseModel):
     perfil: str = Field(min_length=1)
     destaque: str = Field(min_length=1)

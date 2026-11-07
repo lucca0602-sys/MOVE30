@@ -1,5 +1,5 @@
 from backend.models.participant import classificar_imc
-from backend.services.analytics_service import calcular_fc_score
+from backend.services.analytics_service import calcular_fc_score, classificar_fc_repouso
 
 
 def _numero_para_json(valor):
@@ -11,9 +11,12 @@ def _numero_para_json(valor):
 
 def montar_payload_n8n(participant: dict) -> dict:
     return {
-        # A IA interpreta indicadores: nome e e-mail não saem do sistema.
+        # Só o primeiro nome vai para a IA (n8n e Ollama rodam neste PC); e-mail nunca sai do banco.
         "id": participant["id"],
         "indicadores": {
+            "nome": (participant.get("nome") or "").split()[0] if participant.get("nome") else "participante",
+            "tipo_avaliacao": participant.get("tipo_avaliacao", "completa"),
+            "faixa_fc_repouso": classificar_fc_repouso(participant["fc_pre_teste"]),
             "idade": participant["idade"],
             "peso": _numero_para_json(participant["peso"]),
             "altura": _numero_para_json(participant["altura"]),

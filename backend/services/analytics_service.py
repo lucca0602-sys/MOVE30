@@ -124,3 +124,14 @@ def calcular_fc_score(fc_pre_teste: float, fc_pos_teste: float) -> float:
         raise ValueError("As frequências cardíacas devem ser maiores que zero.")
 
     return round(mean((fc_pre_teste, fc_pos_teste)), 2)
+
+
+def classificar_fc_repouso(fc: int | None) -> str | None:
+    """Faixa de referência da FC de repouso em adultos (60 a 100 bpm)."""
+    if fc is None:
+        return None
+    if fc < 60:
+        return "abaixo de 60 bpm (baixa; comum em quem treina, mas vale observar se houver tontura ou cansaço)"
+    if fc <= 100:
+        return "entre 60 e 100 bpm (faixa considerada normal)"
+    return "acima de 100 bpm (elevada para repouso)"

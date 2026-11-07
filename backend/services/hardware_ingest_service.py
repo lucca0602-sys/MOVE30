@@ -90,6 +90,7 @@ def claim_next_assessment(device_id: str) -> dict:
                 SELECT p.*
                 FROM participantes AS p
                 WHERE p.cancelada_em IS NULL
+                  AND p.tipo_avaliacao = 'completa'
                   AND p.altura IS NOT NULL
                   AND (p.peso IS NULL OR p.fc_pre_teste IS NULL OR p.fc_pos_teste IS NULL)
                   AND NOT EXISTS (

@@ -178,7 +178,9 @@ def test_tres_participantes_em_sequencia_com_falhas(api, ia_falsa, db, tmp_path)
         assert por_id[pessoa["id"]]["indicadores"]["peso"] == pessoa["peso"]
         assert por_id[pessoa["id"]]["indicadores"]["fc_pos_teste"] == pessoa["depois"]
     enviado = json.dumps(ia_falsa["payloads"]).lower()
-    assert "ana" not in enviado and "bruno" not in enviado and "example.com" not in enviado
+    # Só o primeiro nome vai para a IA local (personalização); sobrenome e e-mail nunca.
+    assert "souza" not in enviado and "lima" not in enviado and "example.com" not in enviado
+    assert {payload["indicadores"]["nome"] for payload in ia_falsa["payloads"]} <= {"Ana", "Bruno"}
 
     # Raw readings stay linked to the right assessment.
     with db.get_connection() as connection:
