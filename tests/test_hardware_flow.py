@@ -94,7 +94,6 @@ def test_fluxo_completo_salva_medicoes_e_analise(client, analise_ia):
     {"altura": None},
     {"altura": 0.5},
     {"altura": 3.0},
-    {"email": None},
     {"email": "sem-arroba"},
     {"peso": 500},
     {"fc_pre_teste": 10},

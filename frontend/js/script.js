@@ -38,7 +38,6 @@
   const integer = (value) => Number.parseInt(String(value), 10);
   const rules = {
     nome: (value) => value.trim().length >= 2 && value.trim().length <= 100 ? "" : "Informe o nome completo (2 a 100 caracteres).",
-    email: (value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim()) && value.trim().length <= 254 ? "" : "Informe um e-mail válido.",
     idade: (value) => Number.isInteger(integer(value)) && integer(value) >= 1 && integer(value) <= 120 ? "" : "Informe uma idade entre 1 e 120 anos.",
     fas: (value) => Number.isInteger(integer(value)) && integer(value) >= 1 && integer(value) <= 7 ? "" : "Informe um FAS entre 1 e 7.",
     peso: (value) => !value.trim() || (Number.isFinite(Number(value.trim().replace(",", "."))) && Number(value.trim().replace(",", ".")) >= 10 && Number(value.trim().replace(",", ".")) <= 200) ? "" : "Informe um peso entre 10 e 200 kg.",
@@ -114,7 +113,6 @@
     const decimal = (value) => Number.parseFloat(String(value).trim().replace(",", "."));
     const participant = {
       nome: String(values.get("nome")).trim(),
-      email: String(values.get("email")).trim(),
       altura: decimal(values.get("altura")),
       idade: integer(values.get("idade")),
       fas: integer(values.get("fas")),

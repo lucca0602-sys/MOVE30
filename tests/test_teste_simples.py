@@ -173,3 +173,11 @@ def test_contagem_por_hora_so_tem_totais():
                {"criado_em": None}]
     serie = contar_por_hora(pessoas, agora)
     assert len(serie) == 12 and serie[-1] == {"hora": "14h", "total": 1} and serie[-2] == {"hora": "13h", "total": 2}
+
+
+def test_cadastro_sem_email_funciona(publico):
+    # O totem não pede mais e-mail.
+    corpo = {k: v for k, v in CADASTRO.items() if k != "email"}
+    response = publico.post("/public/cadastro", json={**corpo, "tipo_avaliacao": "simples"})
+    assert response.status_code == 201, response.text
+    assert publico.post("/public/cadastro", json={**corpo, "email": "", "tipo_avaliacao": "simples"}).status_code == 201

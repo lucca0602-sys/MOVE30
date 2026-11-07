@@ -3,7 +3,8 @@ from typing import Literal
 
 class ParticipantIndicators(BaseModel):
     nome: str = Field(min_length=2, max_length=100)
-    email: str = Field(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    # Opcional: o cadastro do totem não pede e-mail.
+    email: str | None = Field(default=None, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     idade: int = Field(ge=1, le=120)
     peso: float | None = Field(default=None, ge=10, le=200)
     altura: float = Field(ge=1, le=2.2)
@@ -27,7 +28,10 @@ class ParticipantIndicators(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def normalize_email(cls, value):
-        return value.strip().lower() if isinstance(value, str) else value
+        if isinstance(value, str):
+            value = value.strip().lower()
+            return value or None
+        return value
 
     @field_validator("nome", mode="before")
     @classmethod
