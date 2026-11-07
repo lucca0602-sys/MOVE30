@@ -7,7 +7,7 @@ aqui é o que o participante verá. Não toca no banco.
 Saída: docs/prompt-ia-testes.md (respostas lado a lado) e tempo de cada chamada.
 """
 import json
-import re
+import subprocess
 import time
 from pathlib import Path
 
@@ -21,8 +21,7 @@ from backend.services.n8n_service import montar_payload_n8n
 RAIZ = Path(__file__).resolve().parent.parent
 PROMPT_MD = RAIZ / "docs" / "prompt-ia-n8n.md"
 SAIDA = RAIZ / "docs" / "prompt-ia-testes.md"
-OLLAMA = "http://127.0.0.1:11434/api/generate"
-EXPRESSAO = re.compile(r"\{\{\s*\$json\.body\.indicadores\.(\w+)(?:\s*\?\?\s*'([^']*)')?\s*\}\}")
+OLLAMA = "http://127.0.0.1:11434/api/chat"
 
 PERFIS = [
     ("Magro", "Júlia", 16, 45.0, 1.68, 74),
@@ -38,14 +37,13 @@ def ler_prompt() -> str:
     return texto.split("<!-- PROMPT:INICIO -->", 1)[1].split("<!-- PROMPT:FIM -->", 1)[0].strip()
 
 
-def preencher(prompt: str, indicadores: dict) -> str:
-    def trocar(m):
-        valor = indicadores.get(m.group(1))
-        if valor is None:
-            return m.group(2) if m.group(2) is not None else ""
-        return str(valor)
-
-    return EXPRESSAO.sub(trocar, prompt)
+def corpo_do_n8n(expressao: str, payload: dict) -> dict:
+    """Executa a expressão {{ ... }} do nó HTTP Request no Node, como o n8n faz: mesmo corpo JSON."""
+    codigo = expressao.strip()
+    assert codigo.startswith("{{") and codigo.endswith("}}"), "bloco do prompt deve ser {{ ... }}"
+    js = "const $json = { body: " + json.dumps(payload) + " };\nprocess.stdout.write(" + codigo[2:-2] + ");"
+    saida = subprocess.run(["node", "-e", js], capture_output=True, text=True, encoding="utf-8", check=True)
+    return json.loads(saida.stdout)
 
 
 def payload_do_perfil(i, nome, idade, peso, altura, fc):
@@ -58,12 +56,12 @@ def payload_do_perfil(i, nome, idade, peso, altura, fc):
     return montar_payload_n8n(participante)
 
 
-def chamar_ollama(prompt: str, indicadores: dict) -> tuple[dict, float]:
+def chamar_ollama(corpo: dict, indicadores: dict) -> tuple[dict, float]:
     # Igual ao back-end: até 3 tentativas, reprovando respostas incoerentes.
     inicio = time.monotonic()
     for tentativa in range(1, 4):
         try:
-            dados, _ = _chamar_ollama(prompt)
+            dados, _ = _chamar_ollama(corpo)
             problemas = problemas_de_coerencia(dados, indicadores)
             if problemas:
                 raise ValueError(f"incoerente: {problemas}")
@@ -76,14 +74,11 @@ def chamar_ollama(prompt: str, indicadores: dict) -> tuple[dict, float]:
                 raise
 
 
-def _chamar_ollama(prompt: str) -> tuple[dict, float]:
+def _chamar_ollama(corpo: dict) -> tuple[dict, float]:
     inicio = time.monotonic()
-    r = requests.post(OLLAMA, json={
-        "model": "llama3.2", "prompt": prompt, "stream": False, "format": "json",
-        "options": {"temperature": 0.8},
-    }, timeout=600)
+    r = requests.post(OLLAMA, json=corpo, timeout=600)
     r.raise_for_status()
-    dados = json.loads(r.json()["response"])
+    dados = json.loads(r.json()["message"]["content"])
     AnalysisResponse.model_validate(dados)  # mesmo contrato que o back-end exige
     if any(not str(dados.get(k) or "").strip() for k in ("perfil", "destaque", "oportunidade", "mensagem")):
         raise ValueError("campo vazio")
@@ -97,13 +92,13 @@ def main():
         payload = payload_do_perfil(i, nome, idade, peso, altura, fc)
         print(f"[{i}/5] {rotulo}...", flush=True)
         try:
-            resposta, segundos = chamar_ollama(preencher(prompt, payload["indicadores"]), payload["indicadores"])
+            resposta, segundos = chamar_ollama(corpo_do_n8n(prompt, payload), payload["indicadores"])
         except Exception as erro:  # registra e segue para o próximo perfil
             resposta, segundos = {"erro": str(erro)}, 0.0
         print(f"      {segundos:.0f}s", flush=True)
         resultados.append((rotulo, nome, idade, peso, altura, fc, payload["indicadores"], resposta, segundos))
 
-    linhas = ["# Teste do prompt — 5 perfis (llama3.2 local, temperature 0.8)", ""]
+    linhas = ["# Teste do prompt — 5 perfis (mesmo corpo do nó HTTP Request do n8n)", ""]
     linhas.append("| | " + " | ".join(f"**{r[0]}**" for r in resultados) + " |")
     linhas.append("|---|" + "---|" * len(resultados))
     linhas.append("| Dados | " + " | ".join(
