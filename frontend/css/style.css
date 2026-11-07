@@ -31,7 +31,8 @@
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+/* --altura-cabecalho vem do script.js (altura real do cabeçalho fixo): links #âncora não ficam escondidos atrás dele. */
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--altura-cabecalho, 90px) + 16px); }
 body {
   font-family: var(--font-body);
   color: var(--text);
@@ -79,6 +80,8 @@ button, input { font: inherit; color: inherit; }
   fill: var(--logo-year, var(--teal-300));
 }
 .logo--header { width: 124px; --logo-ring: var(--green-600); transition: width .25s var(--ease); }
+/* Sem proporção o <svg> do logo ocupa 150px de altura (padrão do navegador) e engorda o cabeçalho. */
+.logo--header svg { aspect-ratio: 300 / 112; }
 .logo--about  { width: 290px; --logo-word: #0b2a24; }
 .logo--footer { width: 230px; --logo-word: var(--white); --logo-year: #8fb3ae; }
 
@@ -114,8 +117,12 @@ button, input { font: inherit; color: inherit; }
   transition: box-shadow .3s var(--ease);
 }
 .header.is-scrolled { box-shadow: 0 6px 20px -14px rgba(15, 50, 44, .5); }
-.header.is-scrolled .header__inner { padding-top: 7px; padding-bottom: 7px; }
-.header.is-scrolled .logo--header { width: 110px; }
+.header.is-scrolled .header__inner { padding-top: 4px; padding-bottom: 4px; }
+.header.is-scrolled .logo--header { width: 92px; }
+/* Ao rolar, o cabeçalho encolhe para não tampar o formulário. */
+.header.is-scrolled .nav__cta { padding: 7px 22px; font-size: .9rem; }
+.header.is-scrolled .header__lines { height: 90px; width: 160px; }
+.nav__cta { transition: padding .25s var(--ease), font-size .25s var(--ease); }
 
 .header__lines {
   position: absolute;

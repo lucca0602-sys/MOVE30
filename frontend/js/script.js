@@ -3,7 +3,11 @@
   const config = window.MOVE30_CONFIG || {};
   const API_BASE_URL = String(config.apiBaseUrl || "http://127.0.0.1:8002").replace(/\/$/, "");
   const header = document.querySelector(".header");
-  const onScroll = () => header.classList.toggle("is-scrolled", window.scrollY > 10);
+  // Guarda a altura real do cabeçalho fixo para o CSS (scroll-padding das âncoras).
+  const medirCabecalho = () => document.documentElement.style.setProperty("--altura-cabecalho", `${header.offsetHeight}px`);
+  const onScroll = () => { header.classList.toggle("is-scrolled", window.scrollY > 10); medirCabecalho(); };
+  window.addEventListener("resize", medirCabecalho, { passive: true });
+  header.addEventListener("transitionend", medirCabecalho);
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
   const toggle = document.querySelector(".menu-toggle");
