@@ -16,3 +16,6 @@ linha_medicao/linha_medicao/secrets.h
 *.lnk
 *.tmp
 linha_medicao/**/build/
+
+# Backups do .env feitos pelo scripts/preparar_evento.py (têm senha)
+.env.bak-*

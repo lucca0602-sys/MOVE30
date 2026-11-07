@@ -106,6 +106,13 @@ Aplique em ordem as migrations de `backend/migrations/` que faltam (a `006` já 
 
 ## Dia do evento
 
+**Banco limpo (sábado 14/11, 9h):** os testes ficam guardados no banco atual e o evento começa vazio, sem apagar nada.
+```powershell
+.\.venv\Scripts\python.exe -m scripts.preparar_evento --ativar   # troca DB_NAME para move30_evento (faz backup do .env)
+.\.venv\Scripts\python.exe -m scripts.preparar_evento            # confere: banco em uso e quantas avaliações tem
+```
+O banco `move30_evento` já foi criado vazio em 07/11. Para voltar aos testes: `--voltar`. O `subir_evento.ps1` avisa em amarelo se ainda estiver no banco de testes.
+
 **Ligar (nesta ordem):**
 1. PostgreSQL (serviço do Windows) e Docker Desktop (n8n). O Ollama abre sozinho com o Windows.
 2. `.\scripts\subir_evento.ps1` abre 3 janelas (API interna, app público, Streamlit) e testa cada serviço.

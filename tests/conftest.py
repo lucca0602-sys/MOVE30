@@ -1,37 +1,13 @@
 import os
-from pathlib import Path
 
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
 from backend import database  # noqa: F401  (loads .env before the overrides below)
+from backend.schema import criar_estrutura
 
 TEST_DB = "move30_test"
-MIGRATIONS = Path(__file__).resolve().parent.parent / "backend" / "migrations"
-
-# Table as it existed before the migrations; the repository has no script that creates it.
-BASELINE = """
-CREATE TABLE participantes (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    idade INTEGER NOT NULL,
-    peso NUMERIC NOT NULL,
-    altura NUMERIC NOT NULL,
-    fas INTEGER NOT NULL,
-    fc_pre_teste INTEGER NOT NULL,
-    fc_pos_teste INTEGER NOT NULL,
-    imc NUMERIC NOT NULL,
-    resistencia NUMERIC,
-    indice_move NUMERIC,
-    velocidade_teste NUMERIC,
-    tipo_teste VARCHAR(20),
-    perfil TEXT,
-    destaque TEXT,
-    oportunidade TEXT,
-    mensagem TEXT
-);
-"""
 
 
 def _server_connection(**kwargs):
@@ -54,9 +30,7 @@ def test_database():
     os.environ["ESP32_API_KEY"] = "chave-de-teste"
 
     with database.get_connection() as connection:
-        connection.execute(BASELINE)
-        for migration in sorted(MIGRATIONS.glob("*.sql")):
-            connection.execute(migration.read_text(encoding="utf-8"))
+        criar_estrutura(connection)
 
     yield
 

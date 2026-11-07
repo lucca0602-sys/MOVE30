@@ -8,6 +8,11 @@ function Testar($nome, $url) {
     catch { Write-Host "[!!] $nome não responde em $url" -ForegroundColor Red }
 }
 
+# Mostra qual banco vai ser usado (no evento tem que ser move30_evento).
+$Banco = (Get-Content (Join-Path $Raiz ".env") | Where-Object { $_ -like "DB_NAME=*" }) -replace "^DB_NAME=", ""
+if ($Banco -eq "move30_evento") { Write-Host "[ok] Banco: $Banco (evento)" -ForegroundColor Green }
+else { Write-Host "[!!] Banco: $Banco (TESTES). No dia do evento rode antes: .venv\Scripts\python.exe -m scripts.preparar_evento --ativar" -ForegroundColor Yellow }
+
 Testar "Ollama" "http://127.0.0.1:11434/api/tags"
 Testar "n8n" "http://127.0.0.1:5678/healthz"
 
