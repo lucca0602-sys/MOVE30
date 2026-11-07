@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/painel.css?v=1">
+  <link rel="stylesheet" href="/css/painel.css?v=3">
 </head>
 <body class="painel">
   <main class="painel__wrap">
@@ -24,45 +24,59 @@
     </header>
 
     <section class="cards" aria-label="Médias do grupo">
-      <div class="card"><p class="card__label">Participantes</p><p class="card__valor c-pre" id="m-participantes">—</p></div>
+      <div class="card"><p class="card__label">Participantes</p><p class="card__valor c-pre" id="m-participantes">—</p><p class="card__nota">avaliados até agora</p></div>
       <div class="card"><p class="card__label">Peso (média)</p><p class="card__valor c-purple" id="m-peso">—</p><p class="card__nota" id="n-peso"></p></div>
       <div class="card"><p class="card__label">Altura (média)</p><p class="card__valor c-pre" id="m-altura">—</p><p class="card__nota" id="n-altura"></p></div>
-      <div class="card"><p class="card__label">IMC (média)</p><p class="card__valor c-score" id="m-imc">—</p><p class="card__nota" id="n-imc"></p></div>
-    </section>
-    <section class="cards" aria-label="Frequência cardíaca do grupo">
-      <div class="card"><p class="card__label">FC repouso (média)</p><p class="card__valor c-pre" id="m-fc_repouso">—</p><p class="card__nota" id="n-fc_repouso"></p></div>
-      <div class="card"><p class="card__label">FC pós (média)</p><p class="card__valor c-post" id="m-fc_pos_teste">—</p><p class="card__nota" id="n-fc_pos_teste"></p></div>
+      <div class="card"><p class="card__label">FC pós-corrida (média)</p><p class="card__valor c-post" id="m-fc_pos_teste">—</p><p class="card__nota" id="n-fc_pos_teste"></p></div>
       <div class="card"><p class="card__label">Variação da FC (média)</p><p class="card__valor c-alert" id="m-variacao_fc">—</p><p class="card__nota" id="n-variacao_fc"></p></div>
-      <div class="card"><p class="card__label">FC Score (média)</p><p class="card__valor c-score" id="m-fc_score">—</p><p class="card__nota" id="n-fc_score"></p></div>
     </section>
 
-    <div class="colunas colunas--meio">
-      <section class="bloco">
-        <h2>❤️ Batimentos em repouso do grupo</h2>
-        <div class="barras" id="d-fc"></div>
-      </section>
-      <section class="bloco">
-        <h2>📏 Faixas de IMC do grupo</h2>
-        <div class="barras" id="d-imc"></div>
-      </section>
-    </div>
+    <section class="bloco">
+      <h2>🎯 Médias do grupo</h2>
+      <div class="gauge-trio">
+        <div>
+          <p class="gauge__titulo">IMC médio</p>
+          <div class="gauge"><canvas id="g-imc" aria-label="IMC médio do grupo"></canvas></div>
+          <p class="card__nota" id="n-imc"></p>
+        </div>
+        <div>
+          <p class="gauge__titulo">Batimentos em repouso (média)</p>
+          <div class="gauge"><canvas id="g-fc" aria-label="Média dos batimentos em repouso"></canvas></div>
+          <p class="card__nota" id="n-fc_repouso"></p>
+        </div>
+        <div>
+          <p class="gauge__titulo">Índice MOVE coletivo</p>
+          <div class="gauge"><canvas id="g-indice" aria-label="Índice MOVE do grupo"></canvas></div>
+          <p class="card__nota" id="n-indice">só avaliações com corrida</p>
+        </div>
+      </div>
+    </section>
 
-    <div class="colunas colunas--meio">
-      <section class="bloco">
-        <h2>📈 Índice MOVE do grupo</h2>
-        <div class="card" style="min-height:auto"><p class="card__label">Índice MOVE coletivo</p><p class="card__valor c-pre" id="m-indice">—</p></div>
-        <p class="aviso" id="n-indice">Média do FAS normalizado e da resistência (avaliação completa com corrida).</p>
+    <div class="graficos-grid">
+      <section class="bloco area-fc">
+        <h2>❤️ Batimentos em repouso</h2>
+        <div class="grafico" id="w-fc"><canvas id="g-dist-fc" aria-label="Distribuição das faixas de batimentos em repouso"></canvas></div>
       </section>
-      <section class="bloco">
+      <section class="bloco area-imc">
+        <h2>📏 Faixas de IMC</h2>
+        <div class="grafico" id="w-imc"><canvas id="g-dist-imc" aria-label="Distribuição das faixas de IMC"></canvas></div>
+      </section>
+      <section class="bloco area-hora">
+        <h2>⏱️ Avaliações por hora</h2>
+        <div class="grafico"><canvas id="g-hora" aria-label="Avaliações por hora nas últimas 12 horas"></canvas></div>
+      </section>
+      <section class="bloco area-tipos">
         <h2>🍩 Tipos de avaliação</h2>
-        <div class="barras" id="d-tipos"></div>
+        <div class="grafico" id="w-tipos"><canvas id="g-tipos" aria-label="Tipos de avaliação"></canvas></div>
       </section>
     </div>
 
-    <p class="aviso" id="rodape">Médias aparecem a partir de 3 participantes, para proteger os dados individuais.</p>
+    <p class="aviso" id="rodape">Médias e distribuições aparecem a partir de 3 participantes, para proteger os dados individuais.</p>
   </main>
 
   <script src="/js/config.js"></script>
+  <script src="/js/vendor/chart.umd.js"></script>
+  <script src="/js/graficos.js"></script>
   <script src="/js/geral.js"></script>
 </body>
 </html>

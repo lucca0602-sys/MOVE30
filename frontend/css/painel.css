@@ -40,6 +40,33 @@ body.painel { margin: 0; min-height: 100vh; color: var(--text); font-family: "Po
 .barra__fill { height: 100%; border-radius: 8px; transition: width .6s ease; }
 .barra__valor { min-width: 3.5em; text-align: right; font-weight: 600; }
 
+/* Gráficos (Chart.js) */
+.gauge { position: relative; max-width: 360px; margin: 0 auto; }
+.gauge__legenda { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; list-style: none; padding: 0; margin: 8px 0 10px; font-size: .78rem; color: var(--muted); }
+.gauge__legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.grafico { position: relative; height: 280px; }
+.grafico--baixo { height: 210px; }
+.comparacao-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.comparacao-duo > *, .gauge-trio > *, .graficos-grid > *, .colunas > * { min-width: 0; } /* canvas responsivo dentro de grid */
+.grafico--alto { height: 320px; }
+.gauge-trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.gauge-trio .gauge__titulo { text-align: center; color: #c6d8ef; font-size: .9rem; margin: 0 0 4px; }
+.gauge-trio .card__nota { text-align: center; }
+
+/* Painel geral: 2x2 no notebook/celular; numa linha só em TV 16:9 (sem rolar) */
+.graficos-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr;
+  grid-template-areas: "fc imc" "hora tipos"; }
+.graficos-grid > .bloco { margin-bottom: 0; }
+.area-fc { grid-area: fc; } .area-imc { grid-area: imc; } .area-hora { grid-area: hora; } .area-tipos { grid-area: tipos; }
+@media (min-width: 1600px) {
+  body.painel .painel__wrap { max-width: 1840px; padding-top: 18px; padding-bottom: 18px; }
+  .graficos-grid { grid-template-columns: 1.6fr 1fr 1fr 1fr; grid-template-areas: "hora fc imc tipos"; margin-top: 16px; }
+  .graficos-grid .grafico { height: clamp(240px, 30vh, 360px); }
+  .gauge { max-width: 300px; }
+  .cards { margin-bottom: 14px; }
+  .painel .card { min-height: 100px; }
+}
+
 /* Escala com marcador (IMC, FC) */
 .escala { margin: 6px 0 14px; }
 .escala__faixa { position: relative; display: flex; height: 14px; border-radius: 7px; overflow: hidden; }
@@ -68,6 +95,8 @@ body.painel { margin: 0; min-height: 100vh; color: var(--text); font-family: "Po
 
 @media (max-width: 860px) {
   .colunas, .colunas--meio { grid-template-columns: 1fr; }
+  .gauge-trio { grid-template-columns: 1fr; }
+  .graficos-grid { grid-template-columns: 1fr; grid-template-areas: "fc" "imc" "hora" "tipos"; }
   .colunas > .bloco + .bloco { margin-top: 0; }
 }
 @media (max-width: 480px) {

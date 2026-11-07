@@ -18,6 +18,43 @@
     $("status-pill").classList.add("pill--off");
   }
 
+  // Gráficos só nascem com o conteúdo visível (canvas escondido fica com tamanho zero).
+  const G = window.MOVE30_GRAFICOS;
+  let graficos = null;
+  let ultimaComparacao = 0;
+  function desenharGraficos(r) {
+    if (!graficos) {
+      graficos = {
+        imc: G.velocimetro($("g-imc"), { min: 14, max: 40, zonas: G.ZONAS_IMC, casas: 1 }),
+        fc: G.velocimetro($("g-fc"), { min: 40, max: 130, zonas: G.ZONAS_FC, sufixo: " bpm" }),
+        comparacao: null,
+      };
+    }
+    graficos.imc.atualizar(r.imc);
+    graficos.fc.atualizar(r.fc_repouso);
+    // Média do grupo: só agregados do /public/coletivo; atualiza no máximo a cada 30 s.
+    if (Date.now() - ultimaComparacao > 30000) {
+      ultimaComparacao = Date.now();
+      fetch(`${M.PUBLIC_API}/public/coletivo`, { cache: "no-store" })
+        .then((resp) => (resp.ok ? resp.json() : null))
+        .then((g) => {
+          const imcGrupo = g?.medias?.imc?.valor, fcGrupo = g?.medias?.fc_repouso?.valor;
+          if (imcGrupo == null || fcGrupo == null || r.imc == null || r.fc_repouso == null) return;
+          $("bloco-comparacao").hidden = false;
+          if (!graficos.comparacao) {
+            graficos.comparacao = {
+              imc: G.comparacao($("g-comp-imc"), { titulo: "IMC", casas: 1 }),
+              fc: G.comparacao($("g-comp-fc"), { titulo: "Batimentos em repouso", sufixo: " bpm" }),
+            };
+          }
+          graficos.comparacao.imc.atualizar(r.imc, imcGrupo);
+          graficos.comparacao.fc.atualizar(r.fc_repouso, fcGrupo);
+          $("comparacao-nota").textContent = `Média de ${g.medias.imc.n} pessoas avaliadas no MOVE 30 até agora (IMC ${fmt(imcGrupo, 1, "")} · ${fmt(fcGrupo, 0, " bpm")}).`;
+        })
+        .catch(() => {});
+    }
+  }
+
   let analiseMostrada = false;
   function render(r) {
     $("estado").hidden = true;
@@ -35,25 +72,7 @@
     if (r.fc_pos_teste != null) { $("card-fc-pos").hidden = false; $("v-fc-pos").textContent = fmt(r.fc_pos_teste, 0, " bpm"); }
     if (r.fc_score != null) { $("card-fc-score").hidden = false; $("v-fc-score").textContent = fmt(r.fc_score, 1, " bpm"); }
 
-    // Escalas: IMC 15-40 em 5 faixas desiguais; FC 40-120.
-    if (r.imc != null) {
-      const cortes = [15, 18.5, 25, 30, 35, 40], pesos = [1, 1.3, 1, 1, 1];
-      const total = pesos.reduce((a, b) => a + b, 0);
-      let pos = 0;
-      for (let i = 0; i < 5; i++) {
-        const v = Math.min(Math.max(r.imc, cortes[i]), cortes[i + 1]);
-        pos += ((v - cortes[i]) / (cortes[i + 1] - cortes[i])) * pesos[i];
-      }
-      $("m-imc").style.left = `${(pos / total) * 100}%`;
-      $("m-imc").hidden = false;
-    }
-    if (r.fc_repouso != null) {
-      // Faixas visuais 40-60 (1), 60-100 (2), 100-120 (1)
-      const fc = Math.min(Math.max(r.fc_repouso, 40), 120);
-      const pos = fc <= 60 ? (fc - 40) / 20 : fc <= 100 ? 1 + ((fc - 60) / 40) * 2 : 3 + (fc - 100) / 20;
-      $("m-fc").style.left = `${(pos / 4) * 100}%`;
-      $("m-fc").hidden = false;
-    }
+    desenharGraficos(r);
 
     const pill = $("status-pill");
     pill.classList.remove("pill--off");

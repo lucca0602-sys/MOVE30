@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Caminhos absolutos: a página é servida em /dash/<token> -->
-  <link rel="stylesheet" href="/css/painel.css?v=1">
+  <link rel="stylesheet" href="/css/painel.css?v=3">
 </head>
 <body class="painel">
   <main class="painel__wrap">
@@ -58,33 +58,39 @@
       <div class="colunas colunas--meio">
         <section class="bloco">
           <h2>📏 Onde seu IMC está</h2>
-          <div class="escala">
-            <div class="escala__faixa">
-              <span style="background:#22b8ff"></span><span style="background:#13d6a0;flex:1.3"></span><span style="background:#ffc83d"></span><span style="background:#ff8a5b"></span><span style="background:#ff5b70"></span>
-              <i class="escala__marcador" id="m-imc" hidden></i>
-            </div>
-            <div class="escala__rotulos"><span>15</span><span>18,5</span><span>25</span><span>30</span><span>35</span><span>40</span></div>
-          </div>
+          <div class="gauge"><canvas id="g-imc" aria-label="Velocímetro do seu IMC"></canvas></div>
+          <ul class="gauge__legenda">
+            <li><i style="background:#22b8ff"></i>abaixo de 18,5</li><li><i style="background:#13d6a0"></i>18,5–24,9 saudável</li>
+            <li><i style="background:#ffc83d"></i>25–29,9</li><li><i style="background:#ff8a5b"></i>30–34,9</li><li><i style="background:#ff5b70"></i>35+</li>
+          </ul>
           <p class="aviso">IMC = peso ÷ altura². É uma referência geral; não mede músculo nem gordura separadamente.</p>
         </section>
         <section class="bloco">
           <h2>❤️ Seus batimentos em repouso</h2>
-          <div class="escala">
-            <div class="escala__faixa">
-              <span style="background:#22b8ff"></span><span style="background:#13d6a0;flex:2"></span><span style="background:#ff5b70"></span>
-              <i class="escala__marcador" id="m-fc" hidden></i>
-            </div>
-            <div class="escala__rotulos"><span>40</span><span>60</span><span>100</span><span>120 bpm</span></div>
-          </div>
+          <div class="gauge"><canvas id="g-fc" aria-label="Velocímetro dos seus batimentos em repouso"></canvas></div>
+          <ul class="gauge__legenda">
+            <li><i style="background:#22b8ff"></i>abaixo de 60</li><li><i style="background:#13d6a0"></i>60–100 normal</li><li><i style="background:#ff5b70"></i>acima de 100</li>
+          </ul>
           <p class="aviso">Em repouso, a faixa considerada normal para adultos vai de 60 a 100 bpm.</p>
         </section>
       </div>
+
+      <section class="bloco" id="bloco-comparacao" hidden>
+        <h2>👥 Você e a média do grupo</h2>
+        <div class="comparacao-duo">
+          <div class="grafico grafico--baixo"><canvas id="g-comp-imc" aria-label="Seu IMC comparado com a média do grupo"></canvas></div>
+          <div class="grafico grafico--baixo"><canvas id="g-comp-fc" aria-label="Seus batimentos em repouso comparados com a média do grupo"></canvas></div>
+        </div>
+        <p class="aviso" id="comparacao-nota">Média de todas as pessoas avaliadas no MOVE 30 até agora.</p>
+      </section>
 
       <p class="aviso" style="margin-top:18px">Análise educativa gerada por IA. Não substitui avaliação médica. Este link é só seu: compartilhe apenas se quiser.</p>
     </div>
   </main>
 
   <script src="/js/config.js"></script>
+  <script src="/js/vendor/chart.umd.js"></script>
+  <script src="/js/graficos.js"></script>
   <script src="/js/analise-view.js"></script>
   <script src="/js/dash.js"></script>
 </body>

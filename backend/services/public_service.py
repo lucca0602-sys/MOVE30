@@ -1,4 +1,5 @@
 """Dados do fluxo público: cria o teste simples e devolve o resultado de UMA pessoa pelo token."""
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from psycopg.rows import dict_row
@@ -90,6 +91,26 @@ FAIXAS_FC = (("baixa", "Abaixo de 60"), ("normal", "60 a 100"), ("elevada", "Aci
 CLASSES_IMC = ("Abaixo do peso", "Peso considerado normal", "Sobrepeso", "Obesidade grau I", "Obesidade grau II", "Obesidade grau III")
 
 
+# Brasília sem horário de verão desde 2019; fuso fixo evita depender do tzdata no Windows.
+FUSO_EVENTO = timezone(timedelta(hours=-3))
+HORAS_NO_GRAFICO = 12
+
+
+def contar_por_hora(participantes: list[dict], agora: datetime | None = None) -> list[dict]:
+    """Avaliações por hora (últimas 12 horas até agora), para o gráfico ao vivo do /geral."""
+    agora = (agora or datetime.now(timezone.utc)).astimezone(FUSO_EVENTO).replace(minute=0, second=0, microsecond=0)
+    inicio = agora - timedelta(hours=HORAS_NO_GRAFICO - 1)
+    contagem = {inicio + timedelta(hours=i): 0 for i in range(HORAS_NO_GRAFICO)}
+    for p in participantes:
+        criado = p.get("criado_em")
+        if criado is None:
+            continue
+        hora = criado.astimezone(FUSO_EVENTO).replace(minute=0, second=0, microsecond=0)
+        if hora in contagem:
+            contagem[hora] += 1
+    return [{"hora": f"{h.hour:02d}h", "total": n} for h, n in contagem.items()]
+
+
 def _media(valores: list[float], casas: int = 1) -> dict:
     n = len(valores)
     return {"valor": round(sum(valores) / n, casas) if n >= MINIMO_PARA_MEDIA else None, "n": n}
@@ -125,6 +146,7 @@ def calcular_painel_publico(participantes: list[dict]) -> dict:
     indice = calcular_indice_move_coletivo(pessoas)
     return {
         "participantes": total,
+        "avaliacoes_por_hora": contar_por_hora(participantes),
         "minimo_para_media": MINIMO_PARA_MEDIA,
         "medias": {
             "peso": _media(nums("peso")),

@@ -128,3 +128,16 @@ def test_painel_coletivo_so_tem_agregados(publico):
     assert painel["tipos_avaliacao"] == {"simples": 3}
     texto = str(painel).lower()
     assert "ana" not in texto and "bruno" not in texto and "token" not in texto and "'id'" not in texto
+
+
+def test_contagem_por_hora_so_tem_totais():
+    from datetime import datetime, timezone
+    from backend.services.public_service import contar_por_hora
+
+    agora = datetime(2026, 11, 14, 17, 30, tzinfo=timezone.utc)  # 14h30 em Brasília
+    pessoas = [{"criado_em": datetime(2026, 11, 14, 16, 5, tzinfo=timezone.utc)},
+               {"criado_em": datetime(2026, 11, 14, 16, 50, tzinfo=timezone.utc)},
+               {"criado_em": datetime(2026, 11, 14, 17, 10, tzinfo=timezone.utc)},
+               {"criado_em": None}]
+    serie = contar_por_hora(pessoas, agora)
+    assert len(serie) == 12 and serie[-1] == {"hora": "14h", "total": 1} and serie[-2] == {"hora": "13h", "total": 2}

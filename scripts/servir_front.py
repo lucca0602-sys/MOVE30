@@ -69,10 +69,13 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
+    global APP_PUBLICO
     parser = argparse.ArgumentParser()
     parser.add_argument("--rede", action="store_true", help="aceita celulares da rede local (0.0.0.0)")
     parser.add_argument("--porta", type=int, default=8080)
+    parser.add_argument("--api", default=APP_PUBLICO, help="app público para onde /public é repassado")
     args = parser.parse_args()
+    APP_PUBLICO = args.api.rstrip("/")
     host = "0.0.0.0" if args.rede else "127.0.0.1"
     servidor = ThreadingHTTPServer((host, args.porta), partial(Handler, directory=str(FRONT)))
     print(f"Front em http://{'IP-DO-PC' if args.rede else '127.0.0.1'}:{args.porta}  (Ctrl+C para parar)")
