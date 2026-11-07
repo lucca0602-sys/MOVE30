@@ -8,6 +8,18 @@ Estação de avaliação física da feira de ciências. Um cadastro só no totem
 Nos dois casos: ao terminar o cadastro, o totem mostra a **senha da estação** e o **QR Code** do resultado pessoal (`/dash/<token>`). Quando as medições acabam, a IA analisa e o resultado aparece no totem e no celular da pessoa.
 A altura vem do cadastro. Se ela passar a ser medida pelo hardware (o firmware já tem `sensor_altura`), a fila da estação precisa deixar de exigir altura no cadastro.
 
+## Endereços em produção
+
+| O quê | URL |
+|---|---|
+| Totem (cadastro + senha + QR) | https://ia-frontend-seven.vercel.app |
+| Painel geral (TV) | https://ia-frontend-seven.vercel.app/geral |
+| Resultado pessoal (QR) | https://ia-frontend-seven.vercel.app/dash/TOKEN |
+| Back-end público (Funnel) | https://notebooklucca.tail5c65a2.ts.net |
+
+Projeto Vercel: `ia-frontend` (Root Directory `frontend`, preset Other, variável `MOVE30_API_URL`).
+A URL da Vercel já está em `CORS_ORIGINS` no `.env` do PC.
+
 ## Arquitetura
 
 ```
