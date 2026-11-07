@@ -1,4 +1,4 @@
-// Peças compartilhadas entre teste.html e dash.html.
+// Peças compartilhadas entre o cadastro (index.html) e o dash pessoal (dash.html).
 // Todo texto vindo da API/IA entra via textContent (nunca innerHTML).
 (function () {
   "use strict";

@@ -1,28 +1,12 @@
-"""Dados do fluxo público: cria o teste simples e devolve o resultado de UMA pessoa pelo token."""
+"""Dados do fluxo público: resultado de UMA pessoa pelo token e agregados do grupo."""
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from psycopg.rows import dict_row
 
 from backend.database import get_connection
-from backend.models.participant import TesteSimples, classificar_imc
-from backend.services.analytics_service import calcular_fc_score, calcular_imc, classificar_fc_repouso
-
-
-def salvar_teste_simples(teste: TesteSimples) -> tuple[int, UUID]:
-    imc = calcular_imc(teste.peso, teste.altura)
-    with get_connection() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO participantes (nome, idade, peso, altura, fc_pre_teste, imc, tipo_avaliacao)
-                VALUES (%s, %s, %s, %s, %s, %s, 'simples')
-                RETURNING id, token_publico;
-                """,
-                (teste.nome, teste.idade, teste.peso, teste.altura, teste.fc_repouso, imc),
-            )
-            participant_id, token = cursor.fetchone()
-            return participant_id, token
+from backend.models.participant import classificar_imc
+from backend.services.analytics_service import calcular_fc_score, classificar_fc_repouso
 
 
 def _numero(valor):

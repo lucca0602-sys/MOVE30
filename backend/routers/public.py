@@ -4,14 +4,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from backend.models.participant import TesteSimples
+from backend.models.participant import ParticipantIndicators
 from backend.services.analysis_service import analyze_completed_assessment
-from backend.services.participant_service import listar_participantes
-from backend.services.public_service import (
-    buscar_resultado_publico,
-    calcular_painel_publico,
-    salvar_teste_simples,
-)
+from backend.services.participant_service import listar_participantes, salvar_participante
+from backend.services.public_service import buscar_resultado_publico, calcular_painel_publico
 
 router = APIRouter(prefix="/public", tags=["público"])
 
@@ -21,14 +17,19 @@ def health():
     return {"status": "ok"}
 
 
-@router.post("/teste", status_code=201)
-def criar_teste_simples(teste: TesteSimples, tarefas: BackgroundTasks):
-    participant_id, token = salvar_teste_simples(teste)
-    # A IA demora (CPU); responde já e analisa em segundo plano.
-    # Se falhar, o worker da API interna tenta de novo (IA_INTERVALO_S).
-    tarefas.add_task(analyze_completed_assessment, participant_id)
-    # O ID interno não sai: o token é a única chave pública.
-    return {"token": str(token)}
+@router.post("/cadastro", status_code=201)
+def cadastrar(participante: ParticipantIndicators, tarefas: BackgroundTasks):
+    """Cadastro do totem (com corrida ou simples). As medidas vêm depois, da estação."""
+    participant_id, token = salvar_participante(participante)
+    medidas = [participante.peso, participante.altura, participante.fc_pre_teste]
+    if participante.tipo_avaliacao == "completa":
+        medidas.append(participante.fc_pos_teste)
+    if all(valor is not None for valor in medidas):
+        # Medidas informadas à mão no cadastro: já analisa em segundo plano.
+        tarefas.add_task(analyze_completed_assessment, participant_id)
+    # "numero" é a senha da fila da estação (o Streamlit da equipe mostra o mesmo número).
+    # O token é a chave do link pessoal /dash/<token> do QR Code.
+    return {"token": str(token), "numero": participant_id}
 
 
 @router.get("/resultado/{token}")

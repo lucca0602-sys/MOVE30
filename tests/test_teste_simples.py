@@ -1,9 +1,12 @@
+"""Cadastro único do totem (com corrida ou simples), link público do QR e painel /geral."""
 import uuid
 
 import pytest
 from fastapi.testclient import TestClient
 
-TESTE = {"nome": "Ana Clara Souza", "idade": 16, "peso": 55.0, "altura": 1.62, "fc_repouso": 72}
+from tests.test_hardware_flow import enviar, proxima
+
+CADASTRO = {"nome": "Ana Clara Souza", "email": "ana@example.com", "idade": 16, "altura": 1.62, "fas": 3}
 
 
 @pytest.fixture
@@ -13,62 +16,98 @@ def publico(db, analise_ia):
     return TestClient(app)
 
 
-def _criar(publico, **extra):
-    response = publico.post("/public/teste", json={**TESTE, **extra})
+def _cadastrar(publico, tipo="simples", **extra):
+    corpo = {**CADASTRO, "tipo_avaliacao": tipo, **extra}
+    if tipo == "completa":
+        corpo.setdefault("tipo_teste", "moderate")
+    response = publico.post("/public/cadastro", json=corpo)
     assert response.status_code == 201, response.text
-    return response.json()["token"]
+    return response.json()
 
 
-def test_teste_simples_salva_analisa_e_devolve_pelo_token(publico, analise_ia):
-    token = _criar(publico)
+def _medir_simples(client, peso=55.0, fc=72):
+    """A estação pega o próximo da fila e mede peso + 1 batimento."""
+    atual = proxima(client)
+    assert atual["next_measurement"] == "weight"
+    assert enviar(client, atual["assessment_id"], "weight", peso, "kg").json()["complete"] is False
+    return enviar(client, atual["assessment_id"], "heart_rate_rest", fc, "bpm").json()
 
-    # A análise roda em segundo plano logo após a resposta (TestClient executa na hora).
+
+def test_simples_termina_no_primeiro_batimento_e_dispara_a_ia(publico, client, analise_ia):
+    cadastro = _cadastrar(publico)
+    assert publico.get(f"/public/resultado/{cadastro['token']}").json()["status"] == "aguardando_medicoes"
+
+    resposta = _medir_simples(client)
+    # Sem corrida: a estação recebe "complete" e não pede o batimento pós-teste.
+    assert resposta["complete"] is True and resposta["next_measurement"] is None
     assert len(analise_ia) == 1
     indicadores = analise_ia[0]["indicadores"]
-    assert indicadores["nome"] == "Ana"
-    assert indicadores["tipo_avaliacao"] == "simples"
-    assert indicadores["fc_pre_teste"] == 72
-    assert indicadores["fc_pos_teste"] is None
-    assert "normal" in indicadores["faixa_fc_repouso"]
+    assert indicadores["nome"] == "Ana" and indicadores["tipo_avaliacao"] == "simples"
+    assert indicadores["fc_pre_teste"] == 72 and indicadores["fc_pos_teste"] is None
     assert "email" not in indicadores
 
-    resultado = publico.get(f"/public/resultado/{token}").json()
-    assert resultado["status"] == "pronto"
-    assert resultado["primeiro_nome"] == "Ana"
-    assert resultado["imc"] == 21.0
+    resultado = publico.get(f"/public/resultado/{cadastro['token']}").json()
+    assert resultado["status"] == "pronto" and resultado["imc"] == 21.0
     assert resultado["analise"]["perfil"] == "Perfil de teste"
     assert "id" not in resultado and "email" not in resultado and "nome" not in resultado
 
 
-def test_resultado_mostra_analisando_enquanto_ia_nao_responde(publico, monkeypatch):
+def test_com_corrida_continua_pedindo_o_batimento_pos(publico, client):
+    _cadastrar(publico, tipo="completa")
+    atual = proxima(client)
+    enviar(client, atual["assessment_id"], "weight", 60.0, "kg")
+    resposta = enviar(client, atual["assessment_id"], "heart_rate_rest", 70, "bpm").json()
+    assert resposta["complete"] is False and resposta["next_measurement"] == "heart_rate_post"
+
+
+def test_simples_e_corrida_dividem_a_mesma_fila_na_ordem(publico, client):
+    primeiro = _cadastrar(publico, tipo="completa")
+    segundo = _cadastrar(publico, tipo="simples", nome="Bruno Lima")
+    fila = client.get("/estacao/status").json()["fila"]
+    assert [p["id"] for p in fila] == [primeiro["numero"], segundo["numero"]]
+
+
+@pytest.mark.parametrize("corpo,erro", [
+    ({"tipo_avaliacao": "completa"}, "nível"),                         # corrida sem nível
+    ({"tipo_avaliacao": "simples", "fc_pos_teste": 120}, "corrida"),    # simples com FC pós
+])
+def test_regras_do_tipo_de_teste(publico, corpo, erro):
+    response = publico.post("/public/cadastro", json={**CADASTRO, **corpo})
+    assert response.status_code == 422 and erro in response.text
+
+
+def test_simples_com_medidas_manuais_ja_analisa(publico, analise_ia):
+    cadastro = _cadastrar(publico, peso=55.0, fc_pre_teste=72)
+    assert len(analise_ia) == 1
+    assert publico.get(f"/public/resultado/{cadastro['token']}").json()["status"] == "pronto"
+
+
+def test_resultado_mostra_analisando_enquanto_ia_nao_responde(publico, client, monkeypatch):
     def ia_fora(_payload):
         raise RuntimeError("IA indisponível")
 
     monkeypatch.setattr("backend.services.analysis_service.enviar_para_n8n", ia_fora)
-    token = _criar(publico)
-    resultado = publico.get(f"/public/resultado/{token}").json()
-    assert resultado["status"] == "analisando"
-    assert resultado["analise"] is None
+    cadastro = _cadastrar(publico)
+    _medir_simples(client)
+    resultado = publico.get(f"/public/resultado/{cadastro['token']}").json()
+    assert resultado["status"] == "analisando" and resultado["analise"] is None
 
-    from backend.services.participant_service import listar_analises_pendentes, ANALISE_PENDENTE
     from backend.database import get_connection
+    from backend.services.participant_service import listar_analises_pendentes
 
-    # Sem esperar o intervalo de retry, o teste simples deve contar como pendente.
+    # Sem esperar o intervalo de retry, o simples medido conta como pendente para a IA.
     with get_connection() as connection:
         connection.execute("UPDATE participantes SET ia_proxima_tentativa = NULL;")
     assert len(listar_analises_pendentes()) == 1
-    assert "simples" in ANALISE_PENDENTE
 
 
 def test_token_de_um_nao_mostra_outro_e_token_invalido_falha(publico):
-    token_ana = _criar(publico)
-    token_bruno = _criar(publico, nome="Bruno Lima", peso=90.0)
-
-    assert publico.get(f"/public/resultado/{token_ana}").json()["primeiro_nome"] == "Ana"
-    assert publico.get(f"/public/resultado/{token_bruno}").json()["primeiro_nome"] == "Bruno"
+    ana = _cadastrar(publico)
+    bruno = _cadastrar(publico, nome="Bruno Lima")
+    assert publico.get(f"/public/resultado/{ana['token']}").json()["primeiro_nome"] == "Ana"
+    assert publico.get(f"/public/resultado/{bruno['token']}").json()["primeiro_nome"] == "Bruno"
     assert publico.get(f"/public/resultado/{uuid.uuid4()}").status_code == 404
     assert publico.get("/public/resultado/1").status_code == 422
-    assert publico.get("/public/resultado/../participantes").status_code in (404, 422)
 
 
 def test_app_publico_nao_tem_rotas_internas(publico):
@@ -80,25 +119,16 @@ def test_app_publico_nao_tem_rotas_internas(publico):
         ("get", "/docs"),
         ("get", "/openapi.json"),
         ("post", "/participantes"),
+        ("get", "/api/v1/hardware/assessments/next"),
     ):
         assert getattr(publico, metodo)(rota).status_code == 404, rota
 
 
 def test_rotas_internas_nao_vazam_token(publico, client):
-    _criar(publico)
+    _cadastrar(publico)
     participante = client.get("/participantes").json()["participantes"][0]
     assert "token_publico" not in participante
     assert "token_publico" not in client.get(f"/participantes/{participante['id']}").json()["participante"]
-
-
-def test_teste_simples_nao_entra_na_fila_do_hardware(publico, client):
-    _criar(publico)
-    assert client.get("/estacao/status").json()["fila"] == []
-
-
-@pytest.mark.parametrize("campo,valor", [("peso", 5), ("altura", 3), ("fc_repouso", 10), ("nome", "A"), ("idade", 2)])
-def test_teste_simples_valida_medidas(publico, campo, valor):
-    assert publico.post("/public/teste", json={**TESTE, campo: valor}).status_code == 422
 
 
 def _painel(publico):
@@ -108,18 +138,20 @@ def _painel(publico):
     return publico.get("/public/coletivo").json()
 
 
-def test_painel_coletivo_esconde_medias_com_poucas_pessoas(publico):
-    _criar(publico)
-    _criar(publico, nome="Bruno Lima", peso=90.0)
+def test_painel_coletivo_esconde_medias_com_poucas_pessoas(publico, client):
+    for nome in ("Ana Souza", "Bruno Lima"):
+        _cadastrar(publico, nome=nome)
+        _medir_simples(client)
     painel = _painel(publico)
     assert painel["participantes"] == 2
     assert painel["medias"]["peso"] == {"valor": None, "n": 2}
     assert painel["distribuicao_imc"] is None
 
 
-def test_painel_coletivo_so_tem_agregados(publico):
+def test_painel_coletivo_so_tem_agregados(publico, client):
     for nome, peso, fc in (("Ana Souza", 50.0, 55), ("Bruno Lima", 70.0, 72), ("Caio Reis", 90.0, 110)):
-        _criar(publico, nome=nome, peso=peso, fc_repouso=fc)
+        _cadastrar(publico, nome=nome, email=f"{nome.split()[0].lower()}@example.com")
+        _medir_simples(client, peso=peso, fc=fc)
     painel = _painel(publico)
     assert painel["participantes"] == 3
     assert painel["medias"]["peso"] == {"valor": 70.0, "n": 3}

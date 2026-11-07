@@ -31,6 +31,10 @@ MEASUREMENTS = {
 
 def next_measurement(participant: dict) -> str | None:
     for name, (column, _, _, _) in MEASUREMENTS.items():
+        # Teste simples termina no batimento de repouso: o firmware só pede corrida
+        # quando a etapa é heart_rate_post, então a ESP32 não precisa mudar.
+        if name == "heart_rate_post" and participant.get("tipo_avaliacao") == "simples":
+            continue
         if participant.get(column) is None:
             return name
     return None
@@ -90,9 +94,9 @@ def claim_next_assessment(device_id: str) -> dict:
                 SELECT p.*
                 FROM participantes AS p
                 WHERE p.cancelada_em IS NULL
-                  AND p.tipo_avaliacao = 'completa'
                   AND p.altura IS NOT NULL
-                  AND (p.peso IS NULL OR p.fc_pre_teste IS NULL OR p.fc_pos_teste IS NULL)
+                  AND (p.peso IS NULL OR p.fc_pre_teste IS NULL
+                       OR (p.fc_pos_teste IS NULL AND p.tipo_avaliacao = 'completa'))
                   AND NOT EXISTS (
                       SELECT 1 FROM hardware_assessment_assignments AS a
                       WHERE a.assessment_id = p.id

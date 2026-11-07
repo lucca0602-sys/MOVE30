@@ -1,9 +1,12 @@
 # MOVE 30
 
-Estação de avaliação física da feira de ciências. Dois fluxos:
+Estação de avaliação física da feira de ciências. Um cadastro só no totem, com a escolha do tipo de teste:
 
-- **Teste rápido** (principal no evento): a pessoa informa nome, idade, peso, altura e batimentos em repouso → IA analisa → QR Code com o resultado dela.
-- **Avaliação completa** (hardware): cadastro no totem → ESP32-S3 mede peso e FC antes/depois da corrida → IA → dashboards.
+- **Com corrida**: a estação (ESP32-S3) mede peso → FC de repouso → corrida → FC depois.
+- **Simples**: a estação mede peso → 1 FC de repouso, e termina (sem corrida).
+
+Nos dois casos: ao terminar o cadastro, o totem mostra a **senha da estação** e o **QR Code** do resultado pessoal (`/dash/<token>`). Quando as medições acabam, a IA analisa e o resultado aparece no totem e no celular da pessoa.
+A altura vem do cadastro. Se ela passar a ser medida pelo hardware (o firmware já tem `sensor_altura`), a fila da estação precisa deixar de exigir altura no cadastro.
 
 ## Arquitetura
 
@@ -11,7 +14,7 @@ Estação de avaliação física da feira de ciências. Dois fluxos:
             INTERNET                                  │            PC DO EVENTO (rede local)
                                                       │
  Celular / TV ──► Vercel (front estático)             │
-                  /         teste rápido + QR         │
+                  /         cadastro + senha + QR     │
                   /dash/TOKEN  resultado de 1 pessoa  │
                   /geral    painel só com médias      │
                      │                                │
@@ -32,7 +35,7 @@ Estação de avaliação física da feira de ciências. Dois fluxos:
 | Rota | O que faz |
 |---|---|
 | `GET /public/health` | teste de vida |
-| `POST /public/teste` | salva o teste rápido e dispara a IA em segundo plano; devolve só um `token` |
+| `POST /public/cadastro` | cadastro do totem (com corrida ou simples); devolve `token` (link do QR) e `numero` (senha da estação) |
 | `GET /public/resultado/{token}` | resultado de UMA pessoa (primeiro nome, medidas, análise). Sem e-mail nem ID |
 | `GET /public/coletivo` | médias e contagens do grupo (escondidas com menos de 3 pessoas) |
 
@@ -41,8 +44,7 @@ O token do QR é um UUID aleatório: não dá pra chutar o link de outra pessoa 
 
 | Peça | Onde roda | Papel |
 |---|---|---|
-| `frontend/teste.html`, `dash.html`, `geral.html` | Vercel | páginas públicas |
-| `frontend/index.html` | Live Server local | cadastro do totem (fluxo com hardware) |
+| `frontend/index.html`, `dash.html`, `geral.html` | Vercel | cadastro do totem + QR, resultado pessoal, painel geral |
 | `backend.public_app` (8003) | PC, só 127.0.0.1 | API pública, atrás do Funnel |
 | `backend.main` (8002) | PC, rede local | API interna: ESP32, Streamlit, workers de backup e de retry da IA |
 | Streamlit (8501) | PC, rede local | ferramenta da equipe: estação, dash com nomes, reprocessar IA |
@@ -99,7 +101,7 @@ Aplique em ordem as migrations de `backend/migrations/` que faltam (a `006` já 
 4. Num celular no 4G: abra `https://SEU-PROJETO.vercel.app`, faça um teste com o nome "TESTE EQUIPE" e confira se o QR abre o resultado.
 
 **Telas:**
-- Participantes: `https://SEU-PROJETO.vercel.app` (totem/tablet ou o celular da pessoa).
+- Totem (cadastro): `https://SEU-PROJETO.vercel.app`. No fim aparece a senha da estação e o QR do resultado.
 - TV: `https://SEU-PROJETO.vercel.app/geral` (atualiza a cada 5 s) ou, sem internet, `http://IP-DO-PC:8501` (Streamlit, rede local).
 - Equipe: Streamlit em `http://IP-DO-PC:8501` (estação, dados completos, reprocessar IA).
 - O PC fica livre para o Serial Monitor do Arduino: nenhum desses serviços precisa da tela dele.
@@ -128,7 +130,9 @@ Os resultados feitos no plano B ficam no mesmo banco. Quando a internet voltar, 
 
 ## Fluxo da estação (hardware)
 
-A estação atende uma pessoa por vez, na ordem do cadastro feito em `frontend/index.html`. A página **Estação de medição** do Streamlit mostra quem deve estar na balança. O teste rápido não entra nessa fila.
+A estação atende uma pessoa por vez, na ordem do cadastro (com corrida e simples dividem a mesma fila). A página **Estação de medição** do Streamlit mostra quem deve estar na balança; a senha é o número que aparece no totem.
+
+No teste **simples** a estação para depois do passo 2: o servidor responde `complete` e o firmware não pede corrida (ele só pede corrida quando a etapa é `heart_rate_post`). Nenhuma mudança na ESP32.
 
 1. Peso: a pessoa sobe e fica parada por cerca de 1 s.
 2. FC de repouso: dedo no sensor por cerca de 15 s.

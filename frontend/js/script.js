@@ -31,6 +31,10 @@
   const form = document.getElementById("cadastro");
   const feedback = form.querySelector(".form__feedback");
   const submitButton = form.querySelector(".form__submit");
+  const tipoAvaliacao = form.elements.namedItem("tipo_avaliacao");
+  const campoNivel = document.getElementById("campo-nivel");
+  const campoFcPos = document.getElementById("campo-fc-pos");
+  const simples = () => tipoAvaliacao.value === "simples";
   const integer = (value) => Number.parseInt(String(value), 10);
   const rules = {
     nome: (value) => value.trim().length >= 2 && value.trim().length <= 100 ? "" : "Informe o nome completo (2 a 100 caracteres).",
@@ -40,8 +44,10 @@
     peso: (value) => !value.trim() || (Number.isFinite(Number(value.trim().replace(",", "."))) && Number(value.trim().replace(",", ".")) >= 10 && Number(value.trim().replace(",", ".")) <= 200) ? "" : "Informe um peso entre 10 e 200 kg.",
     altura: (value) => Number.isFinite(Number(value.trim().replace(",", "."))) && Number(value.trim().replace(",", ".")) >= 1 && Number(value.trim().replace(",", ".")) <= 2.2 ? "" : "Informe uma altura entre 1,00 e 2,20 m.",
     fc_pre_teste: (value) => !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
-    fc_pos_teste: (value) => !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
-    tipo_teste: (value) => ["light", "moderate", "hard"].includes(value) ? "" : "Selecione o nível do teste.",
+    fc_pos_teste: (value) => simples() || !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
+    tipo_avaliacao: (value) => ["completa", "simples"].includes(value) ? "" : "Escolha com corrida ou simples.",
+    // O nível (leve/moderado/intenso) só existe no teste com corrida.
+    tipo_teste: (value) => simples() || ["light", "moderate", "hard"].includes(value) ? "" : "Selecione o nível do teste.",
   };
   const validateField = (input) => {
     const error = rules[input.name](input.value);
@@ -51,19 +57,42 @@
     input.setAttribute("aria-invalid", error ? "true" : "false");
     return !error;
   };
+  const limparErro = (input) => {
+    const field = input.closest(".field");
+    field.classList.remove("has-error");
+    field.querySelector(".field__error").textContent = "";
+    input.setAttribute("aria-invalid", "false");
+  };
+  // Simples: some o nível do teste e a FC depois da corrida.
+  const aplicarTipo = () => {
+    campoNivel.hidden = simples();
+    campoFcPos.hidden = simples();
+    if (simples()) {
+      form.elements.namedItem("tipo_teste").value = "";
+      form.elements.namedItem("fc_pos_teste").value = "";
+      limparErro(form.elements.namedItem("tipo_teste"));
+      limparErro(form.elements.namedItem("fc_pos_teste"));
+    }
+  };
+  tipoAvaliacao.addEventListener("change", aplicarTipo);
+  aplicarTipo();
+
   form.querySelectorAll("input, select").forEach((input) => {
     input.addEventListener("blur", () => validateField(input));
     input.addEventListener("input", () => { if (input.closest(".field").classList.contains("has-error")) validateField(input); });
     input.addEventListener("change", () => validateField(input));
   });
   const apiError = (payload) => typeof payload?.detail === "string" ? payload.detail : "Não foi possível concluir o cadastro. Confira a conexão e tente novamente.";
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     feedback.textContent = "";
     feedback.classList.remove("is-error");
-    const fields = [...form.querySelectorAll("input, select")];
+    const fields = [...form.querySelectorAll("input, select")].filter((input) => !input.closest("[hidden]"));
     let fieldsValid = fields.map(validateField).every(Boolean);
-    const manualFields = ["peso", "fc_pre_teste", "fc_pos_teste"].map((name) => form.elements.namedItem(name));
+    // Medição manual: no simples são peso + 1 batimento; com corrida, os três.
+    const nomesManuais = simples() ? ["peso", "fc_pre_teste"] : ["peso", "fc_pre_teste", "fc_pos_teste"];
+    const manualFields = nomesManuais.map((name) => form.elements.namedItem(name));
     const manualStarted = manualFields.some((input) => input.value.trim() !== "");
     if (manualStarted && manualFields.some((input) => input.value.trim() === "")) {
       manualFields.filter((input) => input.value.trim() === "").forEach((input) => {
@@ -89,37 +118,93 @@
       altura: decimal(values.get("altura")),
       idade: integer(values.get("idade")),
       fas: integer(values.get("fas")),
-      tipo_teste: String(values.get("tipo_teste")),
+      tipo_avaliacao: String(values.get("tipo_avaliacao")),
     };
+    if (!simples()) participant.tipo_teste = String(values.get("tipo_teste"));
     if (String(values.get("peso")).trim()) participant.peso = decimal(values.get("peso"));
     if (String(values.get("fc_pre_teste")).trim()) participant.fc_pre_teste = integer(values.get("fc_pre_teste"));
-    if (String(values.get("fc_pos_teste")).trim()) participant.fc_pos_teste = integer(values.get("fc_pos_teste"));
+    if (!simples() && String(values.get("fc_pos_teste")).trim()) participant.fc_pos_teste = integer(values.get("fc_pos_teste"));
     submitButton.disabled = true;
     submitButton.textContent = "Salvando cadastro...";
     try {
-      const response = await fetch(`${API_BASE_URL}/participantes`, {
+      // Rota pública: funciona igual pela Vercel (via Funnel) e no plano B local.
+      const response = await fetch(`${window.MOVE30.PUBLIC_API}/public/cadastro`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(participant),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(apiError(payload));
-      const hasManualMeasurements = ["peso", "altura", "fc_pre_teste", "fc_pos_teste"].every((field) => participant[field] !== undefined);
-      if (hasManualMeasurements) {
-        fetch(`${API_BASE_URL}/participantes/${payload.id}/analisar`, { method: "POST" }).catch(() => {});
-      }
-      feedback.textContent = `Cadastro concluído. Seu número é #${payload.id}. Aguarde ser chamado para a estação; a análise ficará disponível no dashboard MOVE 30.`;
-      form.reset();
-      form.querySelectorAll(".field").forEach((field) => {
-        field.classList.remove("has-error");
-        field.querySelector(".field__error").textContent = "";
-      });
+      mostrarResultado(payload, participant.nome.split(" ")[0]);
     } catch (error) {
-      feedback.textContent = error.message;
+      feedback.textContent = error instanceof TypeError
+        ? "Sem conexão com o servidor do MOVE 30. Chame alguém da equipe."
+        : error.message;
       feedback.classList.add("is-error");
     } finally {
       submitButton.disabled = false;
       submitButton.textContent = "Concluir cadastro";
     }
+  });
+
+  // ---------- Depois do cadastro: QR Code + acompanhamento ----------
+  const resultado = document.getElementById("resultado");
+  const analisando = document.getElementById("analisando");
+  const analisePronta = document.getElementById("analise-pronta");
+  const tituloStatus = document.getElementById("analisando-titulo");
+  const msgStatus = document.getElementById("analisando-msg");
+  let execucao = 0; // invalida o acompanhamento anterior ao clicar em "Novo participante"
+
+  async function mostrarResultado({ token, numero }, primeiroNome) {
+    const minhaExecucao = ++execucao;
+    const M = window.MOVE30;
+    form.hidden = true;
+    resultado.hidden = false;
+    document.getElementById("resultado-titulo").textContent = `Pronto, ${primeiroNome}!`;
+    document.getElementById("resultado-senha").textContent = `#${numero}`;
+    const link = M.linkDash(token);
+    M.desenharQr(document.getElementById("qr"), link);
+    document.getElementById("link-dash").href = link;
+    analisando.hidden = false;
+    analisePronta.hidden = true;
+    tituloStatus.textContent = "Siga para a estação de medição";
+    msgStatus.textContent = "Quando chamarem sua senha, suba na balança e coloque o dedo no sensor.";
+    resultado.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    let timer = null;
+    const final = await M.aguardarAnalise(token, {
+      intervaloMs: 5000,
+      limiteMs: 30 * 60 * 1000, // fila da estação + IA
+      aoAtualizar: (r) => {
+        if (minhaExecucao !== execucao || r.status !== "analisando" || timer) return;
+        tituloStatus.textContent = "Medições concluídas! Analisando seus dados...";
+        timer = M.iniciarMensagensEspera(msgStatus);
+      },
+    }).catch((erro) => ({ erro }));
+    clearInterval(timer);
+    if (minhaExecucao !== execucao) return;
+    if (final?.status === "pronto") {
+      M.renderAnalise(analisePronta, final.analise);
+      analisando.hidden = true;
+      analisePronta.hidden = false;
+    } else {
+      tituloStatus.textContent = "Seu resultado vai aparecer no link do QR Code";
+      msgStatus.textContent = final?.erro ? final.erro.message : "Pode fechar esta tela: a análise chega no seu celular assim que ficar pronta.";
+    }
+  }
+
+  document.getElementById("novo-cadastro").addEventListener("click", () => {
+    execucao++;
+    form.reset();
+    aplicarTipo();
+    form.querySelectorAll(".field").forEach((field) => {
+      field.classList.remove("has-error");
+      field.querySelector(".field__error").textContent = "";
+    });
+    document.getElementById("qr").replaceChildren();
+    resultado.hidden = true;
+    form.hidden = false;
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+    form.querySelector("input").focus({ preventScroll: true });
   });
 })();

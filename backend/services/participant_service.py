@@ -23,15 +23,13 @@ def salvar_participante(participant: ParticipantIndicators):
                 if participant.peso is not None and participant.altura is not None
                 else None
             )
-            velocidade_teste = VELOCIDADES_TESTE[participant.tipo_teste]
-
-            resistencia = calcular_resistencia(
-                velocidade_teste
-            )
-            indice_move = calcular_indice_move(
-                participant.fas,
-                resistencia
-            )
+            # Teste simples não tem corrida: sem velocidade, resistência nem Índice MOVE.
+            if participant.tipo_teste is not None:
+                velocidade_teste = VELOCIDADES_TESTE[participant.tipo_teste]
+                resistencia = calcular_resistencia(velocidade_teste)
+                indice_move = calcular_indice_move(participant.fas, resistencia)
+            else:
+                velocidade_teste = resistencia = indice_move = None
             cursor.execute(
                 """
                 INSERT INTO participantes (
@@ -47,10 +45,11 @@ def salvar_participante(participant: ParticipantIndicators):
                     velocidade_teste,
                     imc,
                     resistencia,
-                    indice_move
+                    indice_move,
+                    tipo_avaliacao
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id;
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, token_publico;
                 """,
                 (
                     participant.nome,
@@ -65,10 +64,12 @@ def salvar_participante(participant: ParticipantIndicators):
                     velocidade_teste,
                     imc,
                     resistencia,
-                    indice_move
+                    indice_move,
+                    participant.tipo_avaliacao,
                 ),
             )
-            return cursor.fetchone()[0]
+            participant_id, token = cursor.fetchone()
+            return participant_id, token
 
 
 def listar_participantes():
@@ -195,9 +196,9 @@ def status_estacoes() -> dict:
                 SELECT p.id, p.nome
                 FROM participantes AS p
                 WHERE p.cancelada_em IS NULL
-                  AND p.tipo_avaliacao = 'completa'
                   AND p.altura IS NOT NULL
-                  AND (p.peso IS NULL OR p.fc_pre_teste IS NULL OR p.fc_pos_teste IS NULL)
+                  AND (p.peso IS NULL OR p.fc_pre_teste IS NULL
+                       OR (p.fc_pos_teste IS NULL AND p.tipo_avaliacao = 'completa'))
                   AND NOT EXISTS (
                       SELECT 1 FROM hardware_assessment_assignments AS a
                       WHERE a.assessment_id = p.id
@@ -212,7 +213,8 @@ def status_estacoes() -> dict:
                 FROM participantes
                 WHERE cancelada_em IS NULL
                   AND peso IS NOT NULL AND altura IS NOT NULL
-                  AND fc_pre_teste IS NOT NULL AND fc_pos_teste IS NOT NULL
+                  AND fc_pre_teste IS NOT NULL
+                  AND (fc_pos_teste IS NOT NULL OR tipo_avaliacao = 'simples')
                 ORDER BY id DESC
                 LIMIT 1;
                 """

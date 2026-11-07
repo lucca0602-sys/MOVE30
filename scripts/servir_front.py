@@ -18,7 +18,7 @@ from pathlib import Path
 FRONT = Path(__file__).resolve().parent.parent / "frontend"
 APP_PUBLICO = "http://127.0.0.1:8003"
 CONFIG_JS = b'window.MOVE30_CONFIG = { apiBaseUrl: "http://127.0.0.1:8002", publicApiBaseUrl: "", dashboardBaseUrl: "http://127.0.0.1:8501" };\n'
-REESCRITAS = ((re.compile(r"^/$"), "/teste.html"), (re.compile(r"^/dash/[^/]+/?$"), "/dash.html"), (re.compile(r"^/geral/?$"), "/geral.html"))
+REESCRITAS = ((re.compile(r"^/dash/[^/]+/?$"), "/dash.html"), (re.compile(r"^/geral/?$"), "/geral.html"))
 
 
 class Handler(SimpleHTTPRequestHandler):

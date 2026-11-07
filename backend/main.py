@@ -51,18 +51,19 @@ def health():
 
 @app.post("/participantes")
 def criar_participante(participant: ParticipantIndicators):
-    participant_id= salvar_participante(participant)
+    participant_id, token = salvar_participante(participant)
     return {
         "mensagem": "Participante cadastrado com sucesso",
         "id": participant_id,
+        "token": str(token),
         "fc_score": (
             calcular_fc_score(participant.fc_pre_teste, participant.fc_pos_teste)
             if participant.fc_pre_teste is not None and participant.fc_pos_teste is not None
             else None
         ),
         "aguardando_medicoes": any(value is None for value in (
-            participant.peso, participant.altura,
-            participant.fc_pre_teste, participant.fc_pos_teste,
+            participant.peso, participant.altura, participant.fc_pre_teste,
+            *((participant.fc_pos_teste,) if participant.tipo_avaliacao == "completa" else ()),
         )),
     }
 
@@ -135,7 +136,9 @@ def analisar_participante(participant_id: int):
     participant = buscar_participante_por_id(participant_id)
 
     if participant:
-        required_measurements = ("peso", "altura", "fc_pre_teste", "fc_pos_teste")
+        required_measurements = ("peso", "altura", "fc_pre_teste") + (
+            () if participant.get("tipo_avaliacao") == "simples" else ("fc_pos_teste",)
+        )
         pending = [field for field in required_measurements if participant.get(field) is None]
         if pending:
             raise HTTPException(

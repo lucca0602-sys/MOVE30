@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
@@ -172,7 +172,16 @@
               <input id="fas" name="fas" type="number" min="1" max="7" step="1" required>
               <small class="field__error" aria-live="polite"></small>
             </div>
-            <div class="field field--tipo-teste">
+            <div class="field field--tipo-avaliacao">
+              <label for="tipo_avaliacao">Tipo de teste</label>
+              <select id="tipo_avaliacao" name="tipo_avaliacao" required>
+                <option value="">Selecione o tipo</option>
+                <option value="completa">Com corrida (2 batimentos)</option>
+                <option value="simples">Simples, sem corrida (1 batimento)</option>
+              </select>
+              <small class="field__error" aria-live="polite"></small>
+            </div>
+            <div class="field field--tipo-teste" id="campo-nivel">
               <label for="tipo_teste">Nível do teste</label>
               <select id="tipo_teste" name="tipo_teste" required>
                 <option value="">Selecione o nível</option>
@@ -196,18 +205,38 @@
                   <input id="fc_pre_teste" name="fc_pre_teste" type="number" min="30" max="220" step="1" placeholder="Opcional">
                   <small class="field__error" aria-live="polite"></small>
                 </div>
-                <div class="field field--fc-pos">
+                <div class="field field--fc-pos" id="campo-fc-pos">
                   <label for="fc_pos_teste">Frequência cardíaca depois (bpm)</label>
                   <input id="fc_pos_teste" name="fc_pos_teste" type="number" min="30" max="220" step="1" placeholder="Opcional">
                   <small class="field__error" aria-live="polite"></small>
                 </div>
               </div>
             </details>
-            <p class="form__privacy">A análise da avaliação fica disponível somente no dashboard MOVE 30.</p>
+            <p class="form__privacy">No fim do cadastro aparece um QR Code com o link do seu resultado. Ele é só seu: não mostramos seus dados para outras pessoas.</p>
           </div>
           <button type="submit" class="btn btn--teal form__submit">Concluir cadastro</button>
           <p class="form__feedback" role="status" aria-live="polite"></p>
         </form>
+
+        <!-- Depois do cadastro: QR Code do resultado pessoal + acompanhamento -->
+        <section class="resultado" id="resultado" hidden aria-live="polite">
+          <h2 class="form__title" id="resultado-titulo">Cadastro concluído!</h2>
+          <p class="resultado__senha">Sua senha na estação: <strong id="resultado-senha">#—</strong></p>
+          <div class="resultado__qr-box">
+            <div id="qr" class="resultado__qr" role="img" aria-label="QR Code do seu resultado"></div>
+            <div>
+              <p class="resultado__qr-text"><strong>Escaneie com o celular</strong> para guardar seu resultado. A análise da IA aparece lá quando as medições terminarem.</p>
+              <a id="link-dash" class="resultado__link" href="#" target="_blank" rel="noopener">Abrir meu resultado</a>
+            </div>
+          </div>
+          <div class="analisando" id="analisando">
+            <div class="analisando__pulse" aria-hidden="true"><span></span><span></span><span></span></div>
+            <p class="analisando__titulo" id="analisando-titulo">Siga para a estação de medição</p>
+            <p class="analisando__msg" id="analisando-msg">Quando chamarem sua senha, suba na balança e coloque o dedo no sensor.</p>
+          </div>
+          <div id="analise-pronta" class="resultado__analise" hidden></div>
+          <button type="button" class="btn btn--teal form__submit" id="novo-cadastro">Novo participante</button>
+        </section>
 
 
       </div>
@@ -253,6 +282,8 @@
   </footer>
 
   <script src="js/config.js"></script>
-  <script src="js/script.js?v=2" defer></script>
+  <script src="js/vendor/qrcode.js" defer></script>
+  <script src="js/analise-view.js" defer></script>
+  <script src="js/script.js?v=3" defer></script>
 </body>
 </html>

@@ -10,7 +10,19 @@ class ParticipantIndicators(BaseModel):
     fas: int = Field(ge=1, le=7)
     fc_pre_teste: int | None = Field(default=None, ge=30, le=220)
     fc_pos_teste: int | None = Field(default=None, ge=30, le=220)
-    tipo_teste: Literal["light", "moderate", "hard"]
+    # "simples": sem corrida, a estação mede peso e 1 batimento. "completa": com corrida.
+    tipo_avaliacao: Literal["completa", "simples"] = "completa"
+    tipo_teste: Literal["light", "moderate", "hard"] | None = None
+
+    @model_validator(mode="after")
+    def regras_do_tipo(self):
+        if self.tipo_avaliacao == "completa" and self.tipo_teste is None:
+            raise ValueError("Selecione o nível do teste com corrida.")
+        if self.tipo_avaliacao == "simples":
+            if self.fc_pos_teste is not None:
+                raise ValueError("O teste simples não tem batimento depois da corrida.")
+            self.tipo_teste = None
+        return self
 
     @field_validator("email", mode="before")
     @classmethod
@@ -36,20 +48,6 @@ class ManualMeasurements(BaseModel):
         return self
 
     
-class TesteSimples(BaseModel):
-    """Teste sem corrida: o próprio participante informa as medidas."""
-    nome: str = Field(min_length=2, max_length=100)
-    idade: int = Field(ge=5, le=120)
-    peso: float = Field(ge=10, le=250)
-    altura: float = Field(ge=0.8, le=2.3)
-    fc_repouso: int = Field(ge=30, le=220)
-
-    @field_validator("nome", mode="before")
-    @classmethod
-    def normalize_nome(cls, value):
-        return " ".join(value.split()) if isinstance(value, str) else value
-
-
 class AnalysisResponse(BaseModel):
     perfil: str = Field(min_length=1)
     destaque: str = Field(min_length=1)
