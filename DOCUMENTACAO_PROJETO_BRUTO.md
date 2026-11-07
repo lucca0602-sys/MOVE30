@@ -1235,3 +1235,97 @@ Esse foi o primeiro fluxo completo com a balança e o sensor reais.
 - Revisar o prompt do n8n para a análise considerar a FC antes e depois.
 - Remover os dados de teste do banco antes da feira, com confirmação.
 - Enviar a este repositório o código desta etapa, que está na cópia local `MOVE30-TEST`.
+
+## 07/11/2026 - Hospedagem, teste simples, QR Code e preparação para a feira
+
+Objetivo da etapa: deixar o MOVE30 acessível de fora da rede local para a feira de 14/11, com resultado individual por QR Code, sem expor banco, IA nem dados de outros participantes.
+
+### Repositório
+
+- O código que só existia na cópia local `MOVE30-TEST` foi enviado ao GitHub (repositório renomeado de `IA` para `MOVE30`).
+- Backup do estado anterior na branch `backup-pre-melhorias`; o trabalho foi feito em `melhorias-final` e depois levado para `main`.
+- Os segredos (`.env`, `secrets.h`, backups do `.env`) e o `build/` do firmware ficam fora do Git.
+
+### Hospedagem
+
+| Parte | Onde roda | Endereço |
+|---|---|---|
+| Front (cadastro, resultado pessoal, painel geral) | Vercel (grátis) | https://ia-frontend-seven.vercel.app |
+| App público (só rotas `/public/*`) | PC do evento, publicado pelo Tailscale Funnel | https://notebooklucca.tail5c65a2.ts.net |
+| API interna, PostgreSQL, n8n, Ollama, Streamlit | PC do evento, só rede local | não publicados |
+
+- Foi criado um segundo app FastAPI (`backend/public_app.py`, porta 8003) só com as rotas públicas. O Funnel publica apenas essa porta. Mesmo quem descobrir a URL não encontra `/participantes`, rotas de hardware nem `/docs`.
+- O Tailscale Funnel foi escolhido no lugar do Cloudflare Tunnel porque dá URL fixa e HTTPS sem precisar de domínio próprio.
+- A URL do back-end entra no front pela variável `MOVE30_API_URL` da Vercel. O CORS do back-end aceita só as origens do `.env` (`CORS_ORIGINS`).
+
+### Cadastro único com teste simples
+
+- O totem tem um só cadastro, com a escolha **com corrida** (peso → FC de repouso → corrida → FC depois) ou **simples** (peso → 1 FC de repouso).
+- O teste simples entra na mesma fila da estação. O servidor encerra a medição depois do batimento de repouso, e o firmware não precisou mudar: ele só pede corrida quando a etapa é `heart_rate_post`.
+- O campo e-mail saiu do cadastro (no back-end ficou opcional).
+- Migrations 006 e 007: colunas `tipo_avaliacao` e `token_publico` (UUID aleatório e imutável), FAS opcional.
+
+### QR Code e resultado pessoal
+
+- Ao terminar o cadastro, o totem mostra a **senha da estação** e o **QR Code** com o link `/dash/<token>`.
+- A tela acompanha sozinha: "Siga para a estação" → "Medições concluídas! Analisando..." → análise da IA.
+- O link usa um token aleatório: não dá para chegar ao resultado de outra pessoa trocando um número. O resultado não mostra e-mail nem ID interno.
+- O QR é gerado no próprio navegador (biblioteca salva no projeto), então funciona sem internet no plano B.
+
+### Dashboards
+
+- Resultado pessoal (`/dash/<token>`): velocímetros de IMC e FC de repouso, análise da IA e comparação "você e a média do grupo".
+- Painel geral (`/geral`): velocímetros das médias e do Índice MOVE, roscas das faixas de IMC, de FC e dos tipos de avaliação, e avaliações por hora. Atualiza a cada 5 s e cabe numa TV 1920×1080 sem rolar.
+- O painel público mostra só médias e contagens, e esconde as médias com menos de 3 pessoas.
+- Gráficos com Chart.js salvo no projeto (sem CDN). O Streamlit continua como ferramenta interna da equipe (estação, dados com nome).
+
+### Análise da IA
+
+Teste com 5 perfis (magro, normal, acima do peso, FC alta, FC baixa) mostrou que o llama3.2 (3B) com o prompt antigo errava regras condicionais:
+
+| Problema observado | Exemplo |
+|---|---|
+| Interpretação errada | IMC 15,9 descrito como "um bom sinal" |
+| Número inventado | FC de 82 bpm descrita como "acima de 100" |
+| Contradição | IMC 22,1 chamado de "abaixo do peso" |
+| Campo vazio | `mensagem` em branco |
+
+Correções:
+
+- O back-end passou a interpretar os números e enviar uma `leitura` pronta (faixa do IMC, faixa da FC, aviso para adolescentes, quando sugerir um profissional). A IA só escreve com o tom certo.
+- Prompt novo no n8n (`/api/chat`), tom amigável e motivador, com nome, IMC e batimentos; `temperature` 0,7 para não repetir texto; schema JSON com tamanho mínimo e máximo por campo. Cópia em `docs/prompt-ia-n8n.md`.
+- Checagem de coerência no back-end (`coerencia_ia.py`): resposta que contradiz os dados ou cita doença é reprovada e a IA é chamada de novo (até 3 tentativas).
+- Resultado no n8n real: teste simples em 66 s e teste com corrida em 44 s, ambos aprovados na primeira tentativa.
+
+### Problemas encontrados
+
+- Docker Desktop não abria por arquivos de socket travados de um crash anterior. O PC estava ligado desde 25/10; reiniciar o Windows resolveu ("Desligar" com inicialização rápida não resolve).
+- Na Vercel, o primeiro deploy detectou o projeto como FastAPI. Corrigido apontando Root Directory para `frontend` e preset Other.
+- O cabeçalho do site tampava o formulário: o logo em SVG não tinha proporção definida e ocupava 150 px de altura. Corrigido (70 px; 44 px ao rolar).
+
+### Testes realizados
+
+- 74 testes automatizados aprovados, incluindo o fluxo simples pela estação, isolamento do app público, token de um participante não abrindo o de outro e painel sem dados individuais.
+- Fluxo completo no navegador com banco de demonstração: cadastro → senha + QR → estação → análise.
+- Acesso externo: QR Code aberto no celular pela rede 4G.
+
+### Preparação para o dia do evento
+
+- Banco `move30_evento` criado vazio. No sábado, 14/11, às 9h: `python -m scripts.preparar_evento --ativar` e reiniciar os serviços. Os testes ficam guardados no banco atual, sem apagar nada.
+- `scripts/subir_evento.ps1` sobe os serviços e avisa se ainda estiver no banco de testes; `scripts/funnel.ps1` publica só a porta 8003.
+- Plano B sem internet: `python -m scripts.servir_front --rede` serve o mesmo front pelo PC na rede local.
+- README atualizado com arquitetura, endereços, variáveis, dia do evento e plano B.
+
+### Pendências da etapa de 03/11 resolvidas
+
+- Hospedagem para o totem e a TV: Vercel + Tailscale Funnel.
+- Revisão do prompt do n8n: feita.
+- Dados de teste antes da feira: banco novo para o evento, sem apagar nada.
+- Código da cópia local enviado ao repositório.
+
+### Pendências
+
+- Testar o modo simples na ESP32 real.
+- Decidir em 10/11 se a altura será medida pelo hardware; se sim, a fila da estação precisa deixar de exigir altura no cadastro.
+- Validações de hardware que continuam abertas: FC depois de corrida real, calibração da balança, três pessoas seguidas e reconexão do Wi-Fi.
+- Atualizar o endereço do repositório na cópia local (`git remote set-url`).
