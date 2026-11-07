@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 class HardwareMeasurement(BaseModel):
-    """One raw measurement emitted by a device; names and units are hardware-defined."""
+    """Raw reading emitted by a MOVE 30 hardware station."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -31,14 +31,15 @@ class HardwareMeasurement(BaseModel):
 
 
 class HardwareMeasurementBatch(BaseModel):
-    """Transport envelope for one idempotent batch sent by a hardware device."""
+    """One idempotent sensor event tied to the device's active assessment."""
 
     model_config = ConfigDict(extra="forbid")
 
     device_id: str = Field(min_length=1, max_length=100)
+    assessment_id: int = Field(gt=0)
     message_id: UUID
     measured_at: datetime
-    measurements: list[HardwareMeasurement] = Field(min_length=1, max_length=100)
+    measurements: list[HardwareMeasurement] = Field(min_length=1, max_length=1)
 
     @field_validator("device_id")
     @classmethod
@@ -63,8 +64,18 @@ class HardwareMeasurementBatch(BaseModel):
         return self
 
 
+class HardwareAssessmentStatus(BaseModel):
+    status: str
+    assessment_id: int | None = None
+    next_measurement: str | None = None
+    tipo_teste: str | None = None
+
+
 class HardwareMeasurementAccepted(BaseModel):
     accepted: bool = True
     duplicate: bool = False
     device_id: str
+    assessment_id: int
     message_id: UUID
+    next_measurement: str | None = None
+    complete: bool = False

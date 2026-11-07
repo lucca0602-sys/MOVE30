@@ -1,20 +1,33 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal
 
 class ParticipantIndicators(BaseModel):
     nome: str = Field(min_length=2, max_length=100)
+    email: str = Field(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     idade: int = Field(ge=1, le=120)
-    peso: float | None = Field(default=None, gt=0, le=500)
-    altura: float | None = Field(default=None, gt=0, le=3)
+    peso: float | None = Field(default=None, ge=10, le=200)
+    altura: float = Field(ge=1, le=2.2)
     fas: int = Field(ge=1, le=7)
-    fc_pre_teste: int | None = Field(default=None, ge=20, le=250)
-    fc_pos_teste: int | None = Field(default=None, ge=20, le=250)
+    fc_pre_teste: int | None = Field(default=None, ge=30, le=220)
+    fc_pos_teste: int | None = Field(default=None, ge=30, le=220)
     tipo_teste: Literal["light", "moderate", "hard"]
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("nome", mode="before")
+    @classmethod
+    def normalize_nome(cls, value):
+        return " ".join(value.split()) if isinstance(value, str) else value
+
+
 class ManualMeasurements(BaseModel):
-    peso: float | None = Field(default=None, gt=0, le=500)
-    altura: float | None = Field(default=None, gt=0, le=3)
-    fc_pre_teste: int | None = Field(default=None, ge=20, le=250)
-    fc_pos_teste: int | None = Field(default=None, ge=20, le=250)
+    peso: float | None = Field(default=None, ge=10, le=200)
+    altura: float | None = Field(default=None, ge=1, le=2.2)
+    fc_pre_teste: int | None = Field(default=None, ge=30, le=220)
+    fc_pos_teste: int | None = Field(default=None, ge=30, le=220)
 
     @model_validator(mode="after")
     def at_least_one_measurement(self):
@@ -24,10 +37,10 @@ class ManualMeasurements(BaseModel):
 
     
 class AnalysisResponse(BaseModel):
-    perfil: str
-    destaque: str
-    oportunidade: str
-    mensagem: str
+    perfil: str = Field(min_length=1)
+    destaque: str = Field(min_length=1)
+    oportunidade: str = Field(min_length=1)
+    mensagem: str = Field(min_length=1)
 
 
 def classificar_imc(imc: float) -> str:

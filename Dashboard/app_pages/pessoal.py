@@ -7,7 +7,15 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from shared import api_base, load_participants, number_or_none, numeric_or_missing
+from shared import (
+    api_base,
+    etapa_atual,
+    load_participants,
+    number_or_none,
+    numeric_or_missing,
+    participant_labels,
+    render_etapas,
+)
 import visuals
 
 importlib.reload(visuals)
@@ -21,7 +29,8 @@ def _api_json(path: str, method: str, payload: dict | None = None) -> dict:
         headers={"Accept": "application/json", "Content-Type": "application/json"},
     )
     try:
-        with urlopen(request, timeout=20) as response:
+        # The AI service may take up to two attempts of 180 s each.
+        with urlopen(request, timeout=380) as response:
             return json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
         try:
@@ -33,7 +42,7 @@ def _api_json(path: str, method: str, payload: dict | None = None) -> dict:
         raise RuntimeError(f"Não foi possível acessar a API em {api_base()}.") from exc
 
 
-@st.fragment(run_every="10s")
+@st.fragment(run_every="3s")
 def render_dashboard():
     st.title("Dashboard pessoal", icon=":material/person:")
     st.caption("Veja seus resultados, sua evolução e a análise da IA.")
@@ -57,18 +66,18 @@ def render_dashboard():
         st.info("Ainda não há participantes com nome e identificador válidos.")
         st.stop()
 
-    frame["_nome_chave"] = frame["nome"].map(lambda value: " ".join(value.split()).casefold())
-    people = frame.sort_values("id", ascending=False).drop_duplicates("_nome_chave", keep="first")
+    people = frame.sort_values("id", ascending=False).drop_duplicates("pessoa_id", keep="first")
     people = people.sort_values("nome", key=lambda values: values.str.casefold())
     record_ids = [str(int(value)) for value in people["id"]]
-    label_by_id = {str(int(row.id)): str(row.nome) for row in people.itertuples()}
+    label_by_id = dict(zip(record_ids, participant_labels(people)))
 
     query_value = str(st.query_params.get("participante", "")).strip()
     selected_from_url = query_value if query_value in record_ids else None
     if selected_from_url is None and query_value:
         normalized_query = " ".join(query_value.split()).casefold()
-        matches = people[people["_nome_chave"] == normalized_query]
-        if not matches.empty:
+        matches = people[people["nome"].map(lambda value: " ".join(value.split()).casefold()) == normalized_query]
+        # A name that matches several people is ambiguous: let the person choose.
+        if len(matches) == 1:
             selected_from_url = str(int(matches.iloc[0]["id"]))
     if selected_from_url not in record_ids:
         selected_from_url = record_ids[0]
@@ -83,14 +92,21 @@ def render_dashboard():
                 format_func=lambda value: label_by_id.get(str(value), "Participante"),
                 key="participant_selector",
             )
-    selected_name = label_by_id[str(selected_id)]
-    normalized_name = " ".join(selected_name.split()).casefold()
-    matching = frame[frame["_nome_chave"] == normalized_name].copy().sort_values("id", ascending=False)
+    selected_person = people.loc[people["id"] == int(selected_id)].iloc[0]
+    selected_name = str(selected_person["nome"])
+    matching = frame[frame["pessoa_id"] == selected_person["pessoa_id"]].copy().sort_values("id", ascending=False)
     latest = matching.iloc[0]
     with latest_col:
         metric_card("Última avaliação", f"#{int(latest['id'])}", "clock", PALETTE["pre"])
 
     st.subheader(f"Olá, {selected_name}")
+    has_analysis = any(pd.notna(latest.get(key)) and str(latest.get(key)).strip() for key in ("perfil", "destaque", "oportunidade", "mensagem"))
+    render_etapas(etapa_atual(
+        number_or_none(latest, "peso"),
+        number_or_none(latest, "fc_pre_teste"),
+        number_or_none(latest, "fc_pos_teste"),
+        has_analysis,
+    ))
     with st.container(horizontal=True):
         metric_card("FC pré-teste", numeric_or_missing(latest, "fc_pre_teste", 0, " bpm"), "heart", PALETTE["alert"])
         metric_card("FC pós-teste", numeric_or_missing(latest, "fc_pos_teste", 0, " bpm"), "heart", PALETTE["post"])
@@ -100,7 +116,6 @@ def render_dashboard():
 
     required_measurements = ("peso", "altura", "fc_pre_teste", "fc_pos_teste")
     missing_measurements = [field for field in required_measurements if number_or_none(latest, field) is None]
-    has_analysis = any(pd.notna(latest.get(key)) and str(latest.get(key)).strip() for key in ("perfil", "destaque", "oportunidade", "mensagem"))
     if missing_measurements:
         st.info("A análise ficará disponível quando as medições de peso, altura e frequência cardíaca estiverem completas.")
     elif not has_analysis:

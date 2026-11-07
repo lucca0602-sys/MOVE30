@@ -47,7 +47,8 @@ h1,h2,h3 { letter-spacing:-.025em; }
 
 personal = st.Page("app_pages/pessoal.py", title="Dashboard pessoal", icon=":material/person:", url_path="pessoal")
 collective = st.Page("app_pages/coletivo.py", title="Dashboard geral", icon=":material/desktop_windows:", url_path="coletivo")
-navigation = st.navigation([personal, collective], position="hidden")
+station = st.Page("app_pages/estacao.py", title="Estação de medição", icon=":material/sensors:", url_path="estacao")
+navigation = st.navigation([personal, collective, station], position="hidden")
 
 with st.sidebar:
     st.image(str(LOGO), width=190, alt="MOVE30")
@@ -55,6 +56,7 @@ with st.sidebar:
     st.space("medium")
     st.page_link(personal, label="Dashboard pessoal", icon=":material/person:", width="stretch")
     st.page_link(collective, label="Dashboard geral", icon=":material/desktop_windows:", width="stretch")
+    st.page_link(station, label="Estação de medição", icon=":material/sensors:", width="stretch")
     st.space("large")
     st.caption(":material/qr_code_2:  Acessar pelo QR Code impresso")
     st.divider()

@@ -9,7 +9,8 @@ def calcular_imc(peso: float, altura: float) -> float:
     if altura <= 0:
         raise ValueError("Altura deve ser maior que zero.")
 
-    return round(peso / (altura ** 2), 2)
+    # O banco devolve Decimal e o sensor envia float.
+    return round(float(peso) / (float(altura) ** 2), 2)
 
 def calcular_resistencia(velocidade_kmh: float) -> float:
     if velocidade_kmh < 6 or velocidade_kmh > 14:
@@ -49,21 +50,18 @@ def calcular_indice_move(
 
 
 def calcular_indice_move_coletivo(participantes: list[dict]) -> dict:
-    """Aggregate one latest FAS/resistance score per named participant."""
-    mais_recentes: dict[str, tuple[int, dict]] = {}
+    """Aggregate one latest FAS/resistance score per person."""
+    mais_recentes: dict[int, tuple[int, dict]] = {}
     for participante in participantes:
-        nome = participante.get("nome")
         identificador = participante.get("id")
-        if not isinstance(nome, str) or not nome.strip() or identificador is None:
-            continue
         try:
             identificador = int(identificador)
         except (TypeError, ValueError):
             continue
-        chave_nome = " ".join(nome.split()).casefold()
-        atual = mais_recentes.get(chave_nome)
+        chave_pessoa = participante.get("pessoa_id", identificador)
+        atual = mais_recentes.get(chave_pessoa)
         if atual is None or identificador > atual[0]:
-            mais_recentes[chave_nome] = (identificador, participante)
+            mais_recentes[chave_pessoa] = (identificador, participante)
 
     indices = []
     for _, participante in mais_recentes.values():
@@ -77,6 +75,46 @@ def calcular_indice_move_coletivo(participantes: list[dict]) -> dict:
     return {
         "indice_move": round(mean(indices), 2) if indices else None,
         "participantes_considerados": len(indices),
+    }
+
+
+FAIXAS_VALIDAS = {
+    "peso": (10, 200),
+    "altura": (1, 2.2),
+    "fc_pre_teste": (30, 220),
+    "fc_pos_teste": (30, 220),
+}
+
+
+def calcular_medias_coletivas(participantes: list[dict]) -> dict:
+    """Average only complete, plausible assessments, using each person's latest valid one."""
+    validas: dict[int, dict] = {}
+    incompletas = 0
+    invalidas = 0
+    for participante in sorted(participantes, key=lambda item: item["id"]):
+        if any(participante.get(campo) is None for campo in FAIXAS_VALIDAS):
+            incompletas += 1
+            continue
+        valores = {campo: float(participante[campo]) for campo in FAIXAS_VALIDAS}
+        if not all(FAIXAS_VALIDAS[campo][0] <= valor <= FAIXAS_VALIDAS[campo][1] for campo, valor in valores.items()):
+            invalidas += 1
+            continue
+        validas[participante.get("pessoa_id", participante["id"])] = valores
+
+    def media(calculo) -> float | None:
+        return round(mean(calculo(valores) for valores in validas.values()), 2) if validas else None
+
+    return {
+        "participantes_validos": len(validas),
+        "avaliacoes_incompletas": incompletas,
+        "avaliacoes_invalidas": invalidas,
+        "peso": media(lambda v: v["peso"]),
+        "altura": media(lambda v: v["altura"]),
+        "fc_pre_teste": media(lambda v: v["fc_pre_teste"]),
+        "fc_pos_teste": media(lambda v: v["fc_pos_teste"]),
+        "variacao_fc": media(lambda v: v["fc_pos_teste"] - v["fc_pre_teste"]),
+        "fc_score": media(lambda v: (v["fc_pre_teste"] + v["fc_pos_teste"]) / 2),
+        "imc": media(lambda v: v["peso"] / v["altura"] ** 2),
     }
 
 

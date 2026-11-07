@@ -1,8 +1,18 @@
 # Local settings and runtime files
 .env
+backups/
 .venv/
 venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .streamlit/secrets.toml
+linha_medicao/linha_medicao/linha_medicao/secrets.h
+linha_medicao/linha_medicao/secrets.h
+
+# Artefatos locais (nunca versionar)
+.tmp/
+.claude/
+*.lnk
+*.tmp
+linha_medicao/**/build/

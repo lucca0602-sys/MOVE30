@@ -11,8 +11,8 @@ def _numero_para_json(valor):
 
 def montar_payload_n8n(participant: dict) -> dict:
     return {
+        # A IA interpreta indicadores: nome e e-mail não saem do sistema.
         "id": participant["id"],
-        "nome": participant["nome"],
         "indicadores": {
             "idade": participant["idade"],
             "peso": _numero_para_json(participant["peso"]),

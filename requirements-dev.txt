@@ -1,0 +1,4 @@
+# Test dependencies for the MOVE 30 backend
+-r requirements.txt
+pytest
+httpx

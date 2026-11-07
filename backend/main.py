@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 
 from backend.routers.hardware import router as hardware_router
@@ -6,9 +8,11 @@ from backend.models.participant import ParticipantIndicators, ManualMeasurements
 from backend.models.participant import AnalysisResponse
 from backend.database import get_connection
 from backend.services.participant_service import (
+    MeasurementAlreadySet,
     salvar_participante,
     salvar_analise_ia,
     atualizar_medicoes_manuais,
+    status_estacoes,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from backend.services.participant_service import listar_participantes
@@ -20,12 +24,21 @@ from backend.services.analytics_service import calcular_resistencia
 from backend.services.analytics_service import calcular_imc
 from backend.services.analytics_service import calcular_fc_score
 from backend.services.analytics_service import calcular_indice_move_coletivo
+from backend.services.analytics_service import calcular_medias_coletivas
+from backend.services.worker_service import iniciar_workers
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    parar = iniciar_workers()
+    yield
+    parar.set()
 
 
 app= FastAPI(
     title="MOVE30 Backend",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.include_router(hardware_router)
@@ -78,7 +91,16 @@ def obter_participantes():
 
 @app.get("/indicadores/coletivos")
 def obter_indicadores_coletivos():
-    return calcular_indice_move_coletivo(listar_participantes())
+    participantes = listar_participantes()
+    return {
+        **calcular_indice_move_coletivo(participantes),
+        "medias": calcular_medias_coletivas(participantes),
+    }
+
+
+@app.get("/estacao/status")
+def obter_status_estacao():
+    return status_estacoes()
 
 
 @app.get("/participantes/{participant_id}")
@@ -98,6 +120,8 @@ def atualizar_medicoes(participant_id: int, measurements: ManualMeasurements):
             participant_id,
             measurements.model_dump(exclude_unset=True),
         )
+    except MeasurementAlreadySet as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if participant is None:
@@ -127,6 +151,8 @@ def analisar_participante(participant_id: int):
                 status_code=409,
                 detail="Preencha as medições pendentes no dashboard antes de gerar a análise.",
             )
+        if participant.get("perfil"):
+            raise HTTPException(status_code=409, detail="Esta avaliação já tem análise salva.")
         payload = montar_payload_n8n(participant)
 
         try:

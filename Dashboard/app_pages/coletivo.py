@@ -4,24 +4,29 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from shared import load_participants, mean_or_none
+from shared import load_api_json, load_participants, participant_labels
 import visuals
 
 importlib.reload(visuals)
 from visuals import PALETTE, PLOT_CONFIG, metric_card, section_heading, status_pill, style_cartesian_axes, style_plotly
 
 
-def _normalizar_nome(value: object) -> str:
-    return " ".join(str(value or "").split()).casefold()
+# Above this, charts show only the most recent people to stay readable.
+LIMITE_GRAFICO = 40
 
 
 def _ultimas_avaliacoes(frame: pd.DataFrame) -> pd.DataFrame:
-    if frame.empty or not {"nome", "id"}.issubset(frame.columns):
+    if frame.empty or not {"nome", "id", "pessoa_id"}.issubset(frame.columns):
         return pd.DataFrame()
-    latest = frame.dropna(subset=["nome", "id"]).copy()
-    latest["_nome_chave"] = latest["nome"].map(_normalizar_nome)
-    latest = latest[latest["_nome_chave"] != ""]
-    return latest.sort_values("id", kind="stable").drop_duplicates("_nome_chave", keep="last")
+    latest = frame.dropna(subset=["nome", "id", "pessoa_id"]).copy()
+    latest = latest[latest["nome"].astype(str).str.strip() != ""]
+    return latest.sort_values("id", kind="stable").drop_duplicates("pessoa_id", keep="last")
+
+
+def _media(valor: object, casas: int, sufixo: str) -> str:
+    if valor is None:
+        return "—"
+    return f"{float(valor):.{casas}f}".replace(".", ",") + sufixo
 
 
 def _indice_move_coletivo(participants: pd.DataFrame) -> tuple[float | None, int, float | None, float | None]:
@@ -43,7 +48,7 @@ def _indice_move_coletivo(participants: pd.DataFrame) -> tuple[float | None, int
     return round(score, 1), len(valid), round(fas_mean_normalized, 1), round(resistance_mean, 1)
 
 
-@st.fragment(run_every="10s")
+@st.fragment(run_every="5s")
 def render_dashboard():
     st.title("Dashboard geral", icon=":material/desktop_windows:")
     st.caption("Visão completa das avaliações e dos indicadores do grupo.")
@@ -72,29 +77,38 @@ def render_dashboard():
 
     now = pd.Timestamp.now().strftime("%H:%M:%S")
     status_pill(f"Atualização em tempo real · {now}", "signal", PALETTE["post"])
-    st.caption(f"Atualização automática a cada 10 segundos · {len(latest)} participante(s)")
+    st.caption(f"Atualização automática a cada 5 segundos · {len(latest)} participante(s)")
 
-    pre_mean = mean_or_none(latest, "fc_pre_teste")
-    post_mean = mean_or_none(latest, "fc_pos_teste")
-    if "fc_score" in latest.columns:
-        score_mean = mean_or_none(latest, "fc_score")
-    else:
-        pre_values = pd.to_numeric(latest.get("fc_pre_teste"), errors="coerce")
-        post_values = pd.to_numeric(latest.get("fc_pos_teste"), errors="coerce")
-        score_mean = float(((pre_values + post_values) / 2).mean()) if pre_values.notna().any() and post_values.notna().any() else None
+    # The API averages only complete and plausible assessments.
+    indicadores = load_api_json("/indicadores/coletivos")
+    medias = (indicadores or {}).get("medias") or {}
+    if not medias:
+        st.warning("Não foi possível obter as médias do grupo.")
     move_index, move_count, fas_normalized_mean, resistance_mean = _indice_move_coletivo(latest)
 
     with st.container(horizontal=True):
         metric_card("Participantes", len(latest), "users", PALETTE["pre"])
-        metric_card("FC pré (média)", "—" if pre_mean is None else f"{pre_mean:.0f} bpm", "heart", PALETTE["pre"])
-        metric_card("FC pós (média)", "—" if post_mean is None else f"{post_mean:.0f} bpm", "heart", PALETTE["post"])
-        metric_card("FC Score (média)", "—" if score_mean is None else f"{score_mean:.1f} bpm", "star", PALETTE["score"])
+        metric_card("Peso (média)", _media(medias.get("peso"), 1, " kg"), "scale", PALETTE["purple"])
+        metric_card("Altura (média)", _media(medias.get("altura"), 2, " m"), "ruler", PALETTE["pre"])
+    with st.container(horizontal=True):
+        metric_card("FC pré (média)", _media(medias.get("fc_pre_teste"), 0, " bpm"), "heart", PALETTE["pre"])
+        metric_card("FC pós (média)", _media(medias.get("fc_pos_teste"), 0, " bpm"), "heart", PALETTE["post"])
+        metric_card("Variação da FC (média)", _media(medias.get("variacao_fc"), 0, " bpm"), "activity", PALETTE["alert"])
+        metric_card("FC Score (média)", _media(medias.get("fc_score"), 1, " bpm"), "star", PALETTE["score"])
+    if medias:
+        st.caption(
+            f"Médias de {medias['participantes_validos']} pessoa(s) com avaliação completa e válida. "
+            f"Fora do cálculo: {medias['avaliacoes_incompletas']} avaliação(ões) incompleta(s) "
+            f"e {medias['avaliacoes_invalidas']} com leitura fora da faixa aceita."
+        )
+    if len(latest) > LIMITE_GRAFICO:
+        st.caption(f"Os gráficos mostram as {LIMITE_GRAFICO} pessoas mais recentes; as médias consideram todas.")
 
     with st.container(border=True):
         section_heading("Frequência cardíaca dos participantes", "activity", PALETTE["pre"], 2)
-        chart_frame = latest.sort_values("id").copy()
+        chart_frame = latest.sort_values("id").tail(LIMITE_GRAFICO).copy()
         if show_names:
-            chart_labels = chart_frame["nome"].astype(str).to_list()
+            chart_labels = participant_labels(chart_frame)
         else:
             chart_labels = [f"Participante {index:02d}" for index in range(1, len(chart_frame) + 1)]
         pre_values = pd.to_numeric(chart_frame.get("fc_pre_teste"), errors="coerce")
@@ -180,7 +194,7 @@ def render_dashboard():
         section_heading("Resultados recentes", "bolt", PALETTE["score"], 2)
         recent = latest.sort_values("id", ascending=False).head(7).copy()
         if show_names:
-            displayed_names = recent["nome"].astype(str).to_list()
+            displayed_names = participant_labels(recent)
         else:
             position_by_id = {
                 int(row.id): index for index, row in enumerate(latest.sort_values("id").itertuples(), start=1)
@@ -197,9 +211,9 @@ def render_dashboard():
 
     with st.container(border=True):
         section_heading("Indicadores das avaliações mais recentes", "activity", PALETTE["pre"], 2)
-        compare = latest.sort_values("id").copy()
+        compare = latest.sort_values("id").tail(LIMITE_GRAFICO).copy()
         compare_labels = (
-            compare["nome"].astype(str).to_list() if show_names
+            participant_labels(compare) if show_names
             else [f"Participante {index:02d}" for index in range(1, len(compare) + 1)]
         )
         fig = go.Figure()
