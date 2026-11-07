@@ -82,3 +82,70 @@ def buscar_resultado_publico(token: UUID) -> dict | None:
         "analise": analise if analise["perfil"] else None,
         "criado_em": row["criado_em"].isoformat() if row["criado_em"] else None,
     }
+
+
+# Abaixo disso a "média" praticamente revela o dado de uma pessoa: o painel mostra só a contagem.
+MINIMO_PARA_MEDIA = 3
+FAIXAS_FC = (("baixa", "Abaixo de 60"), ("normal", "60 a 100"), ("elevada", "Acima de 100"))
+CLASSES_IMC = ("Abaixo do peso", "Peso considerado normal", "Sobrepeso", "Obesidade grau I", "Obesidade grau II", "Obesidade grau III")
+
+
+def _media(valores: list[float], casas: int = 1) -> dict:
+    n = len(valores)
+    return {"valor": round(sum(valores) / n, casas) if n >= MINIMO_PARA_MEDIA else None, "n": n}
+
+
+def calcular_painel_publico(participantes: list[dict]) -> dict:
+    """Só agregados do grupo para o painel público (/geral). Nenhum valor individual sai daqui."""
+    from backend.services.analytics_service import calcular_indice_move_coletivo
+
+    # Avaliação mais recente de cada pessoa, como no dashboard do Streamlit.
+    por_pessoa: dict = {}
+    for p in sorted(participantes, key=lambda item: item["id"]):
+        por_pessoa[p.get("pessoa_id", p["id"])] = p
+    pessoas = list(por_pessoa.values())
+
+    def nums(campo, filtro=lambda p: True):
+        return [float(p[campo]) for p in pessoas if p.get(campo) is not None and filtro(p)]
+
+    completas = lambda p: p.get("fc_pre_teste") is not None and p.get("fc_pos_teste") is not None
+    fc_repouso = nums("fc_pre_teste")
+    imcs = nums("imc")
+    total = len(pessoas)
+    mostrar_distribuicao = total >= MINIMO_PARA_MEDIA
+
+    def faixa_fc(fc):
+        return "baixa" if fc < 60 else "normal" if fc <= 100 else "elevada"
+
+    tipos: dict[str, int] = {}
+    for p in pessoas:
+        chave = "simples" if p.get("tipo_avaliacao") == "simples" else (p.get("tipo_teste") or "nao_informado")
+        tipos[chave] = tipos.get(chave, 0) + 1
+
+    indice = calcular_indice_move_coletivo(pessoas)
+    return {
+        "participantes": total,
+        "minimo_para_media": MINIMO_PARA_MEDIA,
+        "medias": {
+            "peso": _media(nums("peso")),
+            "altura": _media(nums("altura"), 2),
+            "imc": _media(imcs),
+            "fc_repouso": _media(fc_repouso, 0),
+            "fc_pos_teste": _media(nums("fc_pos_teste", completas), 0),
+            "variacao_fc": _media([float(p["fc_pos_teste"]) - float(p["fc_pre_teste"]) for p in pessoas if completas(p)], 0),
+            "fc_score": _media([(float(p["fc_pos_teste"]) + float(p["fc_pre_teste"])) / 2 for p in pessoas if completas(p)]),
+        },
+        "distribuicao_imc": (
+            [{"faixa": c, "total": sum(1 for v in imcs if classificar_imc(v) == c)} for c in CLASSES_IMC]
+            if mostrar_distribuicao else None
+        ),
+        "distribuicao_fc_repouso": (
+            [{"faixa": rotulo, "total": sum(1 for v in fc_repouso if faixa_fc(v) == chave)} for chave, rotulo in FAIXAS_FC]
+            if mostrar_distribuicao else None
+        ),
+        "tipos_avaliacao": tipos if mostrar_distribuicao else None,
+        "indice_move": {
+            "valor": indice["indice_move"] if indice["participantes_considerados"] >= MINIMO_PARA_MEDIA else None,
+            "n": indice["participantes_considerados"],
+        },
+    }

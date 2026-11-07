@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>MOVE 30 | Meu resultado</title>
+  <meta name="theme-color" content="#030b18">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Caminhos absolutos: a página é servida em /dash/<token> -->
+  <link rel="stylesheet" href="/css/painel.css?v=1">
+</head>
+<body class="painel">
+  <main class="painel__wrap">
+    <header class="painel__topo">
+      <div class="painel__marca">
+        <img src="/img/move30-logo.svg" alt="MOVE30">
+      </div>
+      <span class="pill" id="status-pill">Carregando...</span>
+    </header>
+
+    <div id="estado" class="erro-box" aria-live="polite">
+      <div class="carregando" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="aviso" id="estado-msg">Buscando seu resultado...</p>
+    </div>
+
+    <div id="conteudo" hidden>
+      <h1 id="ola">Olá!</h1>
+      <p class="painel__sub" id="sub">Seu resultado do MOVE 30.</p>
+
+      <section class="cards" style="margin-top:18px" aria-label="Suas medidas">
+        <div class="card"><p class="card__label">Peso</p><p class="card__valor c-purple" id="v-peso">—</p></div>
+        <div class="card"><p class="card__label">Altura</p><p class="card__valor c-pre" id="v-altura">—</p></div>
+        <div class="card"><p class="card__label">IMC</p><p class="card__valor c-score" id="v-imc">—</p><p class="card__nota" id="v-imc-classe"></p></div>
+        <div class="card"><p class="card__label">FC em repouso</p><p class="card__valor c-alert" id="v-fc">—</p><p class="card__nota" id="v-fc-faixa"></p></div>
+        <div class="card" id="card-fc-pos" hidden><p class="card__label">FC pós-teste</p><p class="card__valor c-post" id="v-fc-pos">—</p></div>
+        <div class="card" id="card-fc-score" hidden><p class="card__label">FC Score</p><p class="card__valor c-score" id="v-fc-score">—</p></div>
+      </section>
+
+      <div class="colunas">
+        <section class="bloco">
+          <h2>🧠 Análise da IA</h2>
+          <div id="analisando">
+            <div class="carregando" aria-hidden="true"><span></span><span></span><span></span></div>
+            <p id="analisando-msg">A IA está olhando seu IMC e seus batimentos.</p>
+            <p class="aviso">Pode levar até 2 minutos. Esta página atualiza sozinha.</p>
+          </div>
+          <div id="analise-texto" hidden></div>
+        </section>
+        <section class="bloco">
+          <h2>✅ Pontos principais</h2>
+          <div id="analise-pontos"><p class="aviso">Os pontos aparecem aqui quando a análise ficar pronta.</p></div>
+        </section>
+      </div>
+
+      <div class="colunas colunas--meio">
+        <section class="bloco">
+          <h2>📏 Onde seu IMC está</h2>
+          <div class="escala">
+            <div class="escala__faixa">
+              <span style="background:#22b8ff"></span><span style="background:#13d6a0;flex:1.3"></span><span style="background:#ffc83d"></span><span style="background:#ff8a5b"></span><span style="background:#ff5b70"></span>
+              <i class="escala__marcador" id="m-imc" hidden></i>
+            </div>
+            <div class="escala__rotulos"><span>15</span><span>18,5</span><span>25</span><span>30</span><span>35</span><span>40</span></div>
+          </div>
+          <p class="aviso">IMC = peso ÷ altura². É uma referência geral; não mede músculo nem gordura separadamente.</p>
+        </section>
+        <section class="bloco">
+          <h2>❤️ Seus batimentos em repouso</h2>
+          <div class="escala">
+            <div class="escala__faixa">
+              <span style="background:#22b8ff"></span><span style="background:#13d6a0;flex:2"></span><span style="background:#ff5b70"></span>
+              <i class="escala__marcador" id="m-fc" hidden></i>
+            </div>
+            <div class="escala__rotulos"><span>40</span><span>60</span><span>100</span><span>120 bpm</span></div>
+          </div>
+          <p class="aviso">Em repouso, a faixa considerada normal para adultos vai de 60 a 100 bpm.</p>
+        </section>
+      </div>
+
+      <p class="aviso" style="margin-top:18px">Análise educativa gerada por IA. Não substitui avaliação médica. Este link é só seu: compartilhe apenas se quiser.</p>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/analise-view.js"></script>
+  <script src="/js/dash.js"></script>
+</body>
+</html>

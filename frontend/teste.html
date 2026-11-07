@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOVE 30 | Teste rápido</title>
+  <meta name="description" content="Informe peso, altura e batimentos em repouso e receba uma análise personalizada do MOVE 30.">
+  <meta name="theme-color" content="#0f322c">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/teste.css?v=1">
+</head>
+<body class="teste-page">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="logo-move" viewBox="0 0 300 112">
+      <text x="2" y="72" class="logo__word">move</text>
+      <ellipse cx="148" cy="54" rx="66" ry="19" transform="rotate(-16 148 54)" class="logo__ring"/>
+      <text x="292" y="106" text-anchor="end" class="logo__year">2030</text>
+    </symbol>
+  </svg>
+
+  <main class="teste">
+    <a class="logo teste__logo" href="./" aria-label="MOVE 2030"><svg><use href="#logo-move"/></svg></a>
+
+    <!-- Etapa 1: formulário -->
+    <section class="teste__card" id="etapa-form">
+      <h1 class="teste__title">Teste rápido MOVE 30</h1>
+      <p class="teste__lead">Leva 1 minuto. Informe suas medidas e receba uma análise personalizada feita por IA.</p>
+
+      <form id="teste-form" novalidate>
+        <div class="field">
+          <label for="nome">Seu nome</label>
+          <input id="nome" name="nome" type="text" maxlength="100" autocomplete="given-name" placeholder="Como quer ser chamado(a)?" required>
+          <small class="field__error" aria-live="polite"></small>
+        </div>
+        <div class="teste__grid">
+          <div class="field">
+            <label for="idade">Idade</label>
+            <input id="idade" name="idade" type="number" inputmode="numeric" min="5" max="120" placeholder="Ex.: 16" required>
+            <small class="field__error" aria-live="polite"></small>
+          </div>
+          <div class="field">
+            <label for="peso">Peso (kg)</label>
+            <input id="peso" name="peso" type="text" inputmode="decimal" placeholder="Ex.: 62,5" required>
+            <small class="field__error" aria-live="polite"></small>
+          </div>
+          <div class="field">
+            <label for="altura">Altura (m)</label>
+            <input id="altura" name="altura" type="text" inputmode="decimal" placeholder="Ex.: 1,70" required>
+            <small class="field__error" aria-live="polite"></small>
+          </div>
+          <div class="field">
+            <label for="fc_repouso">Batimentos em repouso (bpm)</label>
+            <input id="fc_repouso" name="fc_repouso" type="number" inputmode="numeric" min="30" max="220" placeholder="Ex.: 72" required>
+            <small class="field__error" aria-live="polite"></small>
+          </div>
+        </div>
+        <p class="teste__hint">Para os batimentos: fique sentado(a) e parado(a) por 1 minuto antes de medir.</p>
+        <button type="submit" class="btn btn--teal teste__submit">Ver minha análise</button>
+        <p class="teste__feedback" role="status" aria-live="polite"></p>
+        <p class="teste__privacy">Seu resultado fica num link só seu. Não mostramos seus dados para outras pessoas. Esta análise é educativa e não substitui uma avaliação médica.</p>
+      </form>
+    </section>
+
+    <!-- Etapa 2: QR Code + análise -->
+    <section class="teste__card" id="etapa-resultado" hidden>
+      <h1 class="teste__title" id="resultado-titulo">Pronto!</h1>
+
+      <div class="teste__qr-box">
+        <div id="qr" class="teste__qr" role="img" aria-label="QR Code do seu resultado"></div>
+        <div>
+          <p class="teste__qr-text"><strong>Escaneie com o celular</strong> para guardar seu resultado. A análise também aparece lá.</p>
+          <a id="link-dash" class="teste__link" href="#" target="_blank" rel="noopener">Abrir meu resultado</a>
+        </div>
+      </div>
+
+      <div class="teste__analise" id="analise" aria-live="polite">
+        <div class="analisando" id="analisando">
+          <div class="analisando__pulse" aria-hidden="true"><span></span><span></span><span></span></div>
+          <p class="analisando__titulo">Analisando seus dados...</p>
+          <p class="analisando__msg" id="analisando-msg">A IA está olhando seu IMC e seus batimentos.</p>
+          <p class="analisando__nota">Pode levar até 2 minutos. Você pode escanear o QR enquanto espera.</p>
+        </div>
+        <div id="analise-pronta" hidden></div>
+      </div>
+
+      <button type="button" class="btn btn--teal teste__novo" id="novo-teste">Novo participante</button>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/vendor/qrcode.js"></script>
+  <script src="js/analise-view.js"></script>
+  <script src="js/teste.js"></script>
+</body>
+</html>

@@ -99,3 +99,32 @@ def test_teste_simples_nao_entra_na_fila_do_hardware(publico, client):
 @pytest.mark.parametrize("campo,valor", [("peso", 5), ("altura", 3), ("fc_repouso", 10), ("nome", "A"), ("idade", 2)])
 def test_teste_simples_valida_medidas(publico, campo, valor):
     assert publico.post("/public/teste", json={**TESTE, campo: valor}).status_code == 422
+
+
+def _painel(publico):
+    from backend.routers import public
+
+    public._CACHE_PAINEL["dados"] = None  # sem cache entre testes
+    return publico.get("/public/coletivo").json()
+
+
+def test_painel_coletivo_esconde_medias_com_poucas_pessoas(publico):
+    _criar(publico)
+    _criar(publico, nome="Bruno Lima", peso=90.0)
+    painel = _painel(publico)
+    assert painel["participantes"] == 2
+    assert painel["medias"]["peso"] == {"valor": None, "n": 2}
+    assert painel["distribuicao_imc"] is None
+
+
+def test_painel_coletivo_so_tem_agregados(publico):
+    for nome, peso, fc in (("Ana Souza", 50.0, 55), ("Bruno Lima", 70.0, 72), ("Caio Reis", 90.0, 110)):
+        _criar(publico, nome=nome, peso=peso, fc_repouso=fc)
+    painel = _painel(publico)
+    assert painel["participantes"] == 3
+    assert painel["medias"]["peso"] == {"valor": 70.0, "n": 3}
+    assert painel["medias"]["fc_repouso"]["valor"] == 79
+    assert [f["total"] for f in painel["distribuicao_fc_repouso"]] == [1, 1, 1]
+    assert painel["tipos_avaliacao"] == {"simples": 3}
+    texto = str(painel).lower()
+    assert "ana" not in texto and "bruno" not in texto and "token" not in texto and "'id'" not in texto

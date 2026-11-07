@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOVE 30 | Painel geral</title>
+  <meta name="theme-color" content="#030b18">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/painel.css?v=1">
+</head>
+<body class="painel">
+  <main class="painel__wrap">
+    <header class="painel__topo">
+      <div class="painel__marca">
+        <img src="/img/move30-logo.svg" alt="MOVE30">
+        <div>
+          <h1>Painel geral</h1>
+          <p class="painel__sub">Indicadores do grupo, atualizados em tempo real. Sem dados individuais.</p>
+        </div>
+      </div>
+      <span class="pill" id="pill">Conectando...</span>
+    </header>
+
+    <section class="cards" aria-label="Médias do grupo">
+      <div class="card"><p class="card__label">Participantes</p><p class="card__valor c-pre" id="m-participantes">—</p></div>
+      <div class="card"><p class="card__label">Peso (média)</p><p class="card__valor c-purple" id="m-peso">—</p><p class="card__nota" id="n-peso"></p></div>
+      <div class="card"><p class="card__label">Altura (média)</p><p class="card__valor c-pre" id="m-altura">—</p><p class="card__nota" id="n-altura"></p></div>
+      <div class="card"><p class="card__label">IMC (média)</p><p class="card__valor c-score" id="m-imc">—</p><p class="card__nota" id="n-imc"></p></div>
+    </section>
+    <section class="cards" aria-label="Frequência cardíaca do grupo">
+      <div class="card"><p class="card__label">FC repouso (média)</p><p class="card__valor c-pre" id="m-fc_repouso">—</p><p class="card__nota" id="n-fc_repouso"></p></div>
+      <div class="card"><p class="card__label">FC pós (média)</p><p class="card__valor c-post" id="m-fc_pos_teste">—</p><p class="card__nota" id="n-fc_pos_teste"></p></div>
+      <div class="card"><p class="card__label">Variação da FC (média)</p><p class="card__valor c-alert" id="m-variacao_fc">—</p><p class="card__nota" id="n-variacao_fc"></p></div>
+      <div class="card"><p class="card__label">FC Score (média)</p><p class="card__valor c-score" id="m-fc_score">—</p><p class="card__nota" id="n-fc_score"></p></div>
+    </section>
+
+    <div class="colunas colunas--meio">
+      <section class="bloco">
+        <h2>❤️ Batimentos em repouso do grupo</h2>
+        <div class="barras" id="d-fc"></div>
+      </section>
+      <section class="bloco">
+        <h2>📏 Faixas de IMC do grupo</h2>
+        <div class="barras" id="d-imc"></div>
+      </section>
+    </div>
+
+    <div class="colunas colunas--meio">
+      <section class="bloco">
+        <h2>📈 Índice MOVE do grupo</h2>
+        <div class="card" style="min-height:auto"><p class="card__label">Índice MOVE coletivo</p><p class="card__valor c-pre" id="m-indice">—</p></div>
+        <p class="aviso" id="n-indice">Média do FAS normalizado e da resistência (avaliação completa com corrida).</p>
+      </section>
+      <section class="bloco">
+        <h2>🍩 Tipos de avaliação</h2>
+        <div class="barras" id="d-tipos"></div>
+      </section>
+    </div>
+
+    <p class="aviso" id="rodape">Médias aparecem a partir de 3 participantes, para proteger os dados individuais.</p>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/geral.js"></script>
+</body>
+</html>

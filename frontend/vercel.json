@@ -5,7 +5,8 @@
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/", "destination": "/teste.html" },
-    { "source": "/dash/:token", "destination": "/dash.html" }
+    { "source": "/dash/:token", "destination": "/dash.html" },
+    { "source": "/geral", "destination": "/geral.html" }
   ],
   "headers": [
     {

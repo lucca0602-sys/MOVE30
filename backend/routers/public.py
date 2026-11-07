@@ -1,10 +1,17 @@
+import threading
+import time
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from backend.models.participant import TesteSimples
 from backend.services.analysis_service import analyze_completed_assessment
-from backend.services.public_service import buscar_resultado_publico, salvar_teste_simples
+from backend.services.participant_service import listar_participantes
+from backend.services.public_service import (
+    buscar_resultado_publico,
+    calcular_painel_publico,
+    salvar_teste_simples,
+)
 
 router = APIRouter(prefix="/public", tags=["público"])
 
@@ -30,3 +37,19 @@ def obter_resultado(token: UUID):
     if resultado is None:
         raise HTTPException(status_code=404, detail="Resultado não encontrado.")
     return resultado
+
+
+_CACHE_PAINEL = {"quando": 0.0, "dados": None}
+_TRAVA_PAINEL = threading.Lock()
+CACHE_PAINEL_S = 3
+
+
+@router.get("/coletivo")
+def obter_painel_coletivo():
+    """Painel /geral: só médias e contagens; atualiza no máximo a cada 3 s, por mais telas que consultem."""
+    with _TRAVA_PAINEL:
+        agora = time.monotonic()
+        if _CACHE_PAINEL["dados"] is None or agora - _CACHE_PAINEL["quando"] > CACHE_PAINEL_S:
+            _CACHE_PAINEL["dados"] = calcular_painel_publico(listar_participantes())
+            _CACHE_PAINEL["quando"] = agora
+        return _CACHE_PAINEL["dados"]
