@@ -14,7 +14,7 @@ from backend.services.participant_service import (
     atualizar_medicoes_manuais,
     status_estacoes,
 )
-from fastapi.middleware.cors import CORSMiddleware
+from backend.cors import configurar_cors
 from backend.services.participant_service import listar_participantes
 from backend.services.participant_service import buscar_participante_por_id
 from backend.services.n8n_service import montar_payload_n8n
@@ -43,16 +43,7 @@ app= FastAPI(
 
 app.include_router(hardware_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-    ],
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=False,
-)
+configurar_cors(app)
 
 @app.get("/health")
 def health():
