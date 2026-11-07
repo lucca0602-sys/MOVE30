@@ -29,3 +29,10 @@ def test_ajuste_acrescenta_profissional_quando_falta():
     ajustada = ajustar_resposta(_resp(), {"imc": 15.9, "fc_pre_teste": 74})
     assert "profissional de saúde" in ajustada["oportunidade"]
     assert ajustar_resposta(_resp(), {"imc": 22.1, "fc_pre_teste": 70}) == _resp()
+
+
+def test_reprova_fc_normal_chamada_de_baixa():
+    # Visto no n8n real: 68 bpm descrito como "um pouco baixo".
+    assert any("contradiz a FC normal" in p for p in problemas_de_coerencia(
+        _resp(perfil="batimentos de 68 bpm, um pouco baixo"), {"imc": 24.1, "fc_pre_teste": 68}))
+    assert problemas_de_coerencia(_resp(perfil="52 bpm, baixo e eficiente"), {"imc": 21.1, "fc_pre_teste": 52}) == []

@@ -13,7 +13,8 @@ O que mudou em relação ao antigo:
   O llama3.2 (3B) errava regras condicionais e chegava a inventar valores.
 - `temperature` 0 → 0.7: com 0, pessoas com dados parecidos recebiam o mesmo texto.
 - `num_predict` 200 → 450: a resposta mais detalhada não é mais cortada.
-- O schema JSON (4 chaves obrigatórias) e o `keep_alive` continuam.
+- O schema JSON continua, agora com tamanho mínimo e máximo por campo: o Ollama não consegue devolver campo vazio e não se alonga demais.
+- `keep_alive` continua.
 
 O back-end ainda confere cada resposta (`backend/services/coerencia_ia.py`) e pede de novo quando ela contradiz os dados.
 `scripts/testar_prompt.py` lê este arquivo e manda ao Ollama o mesmo corpo, então o teste reflete o n8n.
@@ -53,10 +54,10 @@ ${$json.body.indicadores.leitura}`
   format: {
     type: "object",
     properties: {
-      perfil: { type: "string" },
-      destaque: { type: "string" },
-      oportunidade: { type: "string" },
-      mensagem: { type: "string" }
+      perfil: { type: "string", minLength: 40, maxLength: 350 },
+      destaque: { type: "string", minLength: 30, maxLength: 250 },
+      oportunidade: { type: "string", minLength: 60, maxLength: 450 },
+      mensagem: { type: "string", minLength: 80, maxLength: 650 }
     },
     required: ["perfil", "destaque", "oportunidade", "mensagem"],
     additionalProperties: false

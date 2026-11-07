@@ -38,8 +38,12 @@ def problemas_de_coerencia(resposta: dict, indicadores: dict) -> list[str]:
 
     fc = indicadores.get("fc_pre_teste")
     if fc is not None:
-        if fc <= 100:
-            problemas += [f"contradiz a FC normal ({p})" for p in ("acima de 100", "elevad", "batimento alto", "batimentos altos") if p in texto]
+        if 60 <= fc <= 100:
+            problemas += [f"contradiz a FC normal ({p})" for p in (
+                "acima de 100", "elevad", "batimento alto", "batimentos altos",
+                "pouco baixo", "muito baixo", "batimento baixo", "batimentos baixos") if p in texto]
+        elif fc < 60:
+            problemas += [f"contradiz a FC baixa ({p})" for p in ("acima de 100", "elevad", "batimento alto", "batimentos altos") if p in texto]
         elif not any(p in texto for p in ("100", "elevad", "alto", "acelerad")):
             problemas.append("não comenta a FC elevada")
 
