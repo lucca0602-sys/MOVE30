@@ -32,7 +32,8 @@
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 /* --altura-cabecalho vem do script.js (altura real do cabeçalho fixo): links #âncora não ficam escondidos atrás dele. */
-html { scroll-behavior: smooth; scroll-padding-top: calc(var(--altura-cabecalho, 90px) + 16px); }
+/* clip no html também: no iOS o overflow do body sozinho não impede a página de "vazar" para o lado. */
+html { overflow-x: clip; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: calc(var(--altura-cabecalho, 90px) + 16px); }
 body {
   font-family: var(--font-body);
   color: var(--text);
@@ -40,11 +41,13 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  overflow-x: clip;
 }
+.form__grid > *, .form__manual-fields > * { min-width: 0; }
 img, svg { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
 ul { list-style: none; }
-button, input { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 
 .container {
   width: 100%;
@@ -435,11 +438,6 @@ button, input { font: inherit; color: inherit; }
 .analysis-result__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 20px; }
 .analysis-result__actions .btn { min-height: 42px; padding: 10px 18px; }
 .analysis-result #evaluation-reference { text-align: center; margin-bottom: 20px; }
-@media (max-width: 520px) {
-  .form__grid { grid-template-columns: 1fr; grid-template-areas: "nome" "altura" "idade" "fas" "tipo-avaliacao" "tipo-teste" "manual" "priv"; }
-  .analysis-result { padding: 18px; }
-  .analysis-result__grid { grid-template-columns: 1fr; }
-}
 
 /* =========================================================
    RODAPÉ
@@ -541,6 +539,8 @@ button, input { font: inherit; color: inherit; }
   .nav__cta { margin-left: 0; }
 
   .header__lines { width: 200px; height: 120px; }
+  /* Cabeçalho encolhido fica baixo: as linhas encolhem junto para não riscar o conteúdo. */
+  .header.is-scrolled .header__lines { width: 100px; height: 60px; }
 
   .hero__inner { grid-template-columns: 1fr; text-align: center; padding-top: 30px; }
   .hero__subtitle { margin-left: 0; }
@@ -551,7 +551,15 @@ button, input { font: inherit; color: inherit; }
   .why__text { font-size: 1.2rem; margin-top: 40px; }
   .join__text { font-size: 1.4rem; }
 
-  .form__grid { grid-template-columns: 1fr 1fr; }
+  /* Toque: campos maiores e fonte de 16px (abaixo disso o iPhone dá zoom ao focar o campo). */
+  .field input, .field select { height: 48px; font-size: 16px; }
+  .field label { font-size: 1rem; }
+  .form { margin-top: 56px; padding-bottom: 64px; }
+  .form__submit { width: min(320px, 100%); height: 52px; font-size: 1.05rem; }
+  .form__manual summary { padding: 4px 0; }
+  .form__privacy { font-size: .85rem; font-weight: 500; }
+  .nav__link { padding: 6px 12px; font-size: 1.2rem; }
+  .nav__link::after { bottom: 2px; left: 12px; width: calc(100% - 24px); }
 
   .footer__top { flex-direction: column; gap: 30px; margin-bottom: 60px; }
   .footer__nav { align-items: center; }
@@ -574,9 +582,28 @@ button, input { font: inherit; color: inherit; }
   .join__title { font-size: 1.2rem; }
   .join__text { font-size: 1.1rem; }
   .join__text br, .hero__subtitle br { display: none; }
-  .form__title { margin-bottom: 32px; }
+  .form__title { font-size: 1.5rem; margin-bottom: 24px; }
+  /* Fica depois do bloco de 900px de propósito: senão as colunas dele vencem e os campos ocupam meia tela. */
+  .form__grid { grid-template-columns: 1fr; grid-template-areas: "nome" "altura" "idade" "fas" "tipo-avaliacao" "tipo-teste" "manual" "priv"; row-gap: 20px; }
+  .form__manual { padding: 14px 16px; }
+  .form__manual-fields { grid-template-columns: 1fr; }
+  .form__manual-fields .field label { min-height: 0; }
+  .form__submit { width: 100%; margin-top: 36px; }
+  .analysis-result { padding: 18px; }
+  .analysis-result__grid { grid-template-columns: 1fr; }
+  .about { padding-top: 210px; padding-bottom: 150px; }
+  .why__card { padding: 40px 20px 160px; border-radius: 36px 36px 0 0; }
+  .why__text { margin-top: 28px; }
+  .hero__inner { min-height: 0; gap: 28px; }
+  .hero__btn { height: 56px; padding: 0 28px; font-size: 1rem; }
+  .band { height: 48px; }
+  .footer__inner { padding-top: 70px; }
+  .footer__top { margin-bottom: 40px; }
   .contacts__pill { font-size: .86rem; gap: 8px; padding: 0 12px; }
-  .contacts__pill a { gap: 6px; }
+  .contacts__pill a { gap: 6px; min-height: 40px; }
+  /* Instagram e WhatsApp empilhados: na mesma linha estouram em telas de 320px. */
+  .contacts__pill { flex-direction: column; height: auto; padding: 6px 18px; gap: 0; border-radius: 24px; }
+  .contacts__sep { display: none; }
   .contacts__pill svg { width: 22px; height: 22px; }
   .footer__nav { font-size: 1.15rem; }
   .footer::before { inset: 16px 6px -200px; border-radius: 80px; }

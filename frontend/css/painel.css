@@ -97,11 +97,18 @@ body.painel { margin: 0; min-height: 100vh; color: var(--text); font-family: "Po
   .colunas, .colunas--meio { grid-template-columns: 1fr; }
   .gauge-trio { grid-template-columns: 1fr; }
   .graficos-grid { grid-template-columns: 1fr; grid-template-areas: "fc" "imc" "hora" "tipos"; }
+  .comparacao-duo { grid-template-columns: 1fr; }
   .colunas > .bloco + .bloco { margin-top: 0; }
+  .grafico { height: 240px; }
+  .grafico--alto { height: 280px; }
 }
 @media (max-width: 480px) {
-  .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .card { min-height: 96px; padding: 12px; }
+  .painel__wrap { padding-top: 16px; }
+  .painel__marca img { width: 110px; }
+  .bloco { padding: 14px; }
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card { min-height: 96px; padding: 12px; min-width: 0; }
+  .card__valor { white-space: normal; overflow-wrap: anywhere; font-size: 1.35rem; }
   .barra__linha { grid-template-columns: 1fr auto; }
   .barra__linha .barra__trilho { grid-column: 1 / -1; grid-row: 2; }
 }
