@@ -9,8 +9,11 @@ import streamlit as st
 
 from shared import (
     api_base,
+    buscar_token_publico,
     etapa_atual,
+    link_pessoal,
     load_participants,
+    make_qr_png,
     number_or_none,
     numeric_or_missing,
     participant_labels,
@@ -100,6 +103,22 @@ def render_dashboard():
         metric_card("Última avaliação", f"#{int(latest['id'])}", "clock", PALETTE["pre"])
 
     st.subheader(f"Olá, {selected_name}")
+    # A toggle (not a button) survives the 3 s fragment refresh while the person scans the code.
+    if st.toggle("Mostrar QR de novo (perdeu o do totem)", key="mostrar_qr", help="Mostra o QR e o link pessoal da última avaliação."):
+        try:
+            token = buscar_token_publico(int(latest["id"]))
+        except Exception:  # noqa: BLE001 - any DB failure only hides the QR
+            token = None
+        if token is None:
+            st.warning("Não foi possível buscar o link desta avaliação no banco.")
+        else:
+            url = link_pessoal(token)
+            with st.container(border=True, horizontal=True, vertical_alignment="center"):
+                st.image(make_qr_png(url), width=260)
+                with st.container():
+                    st.markdown(f"**Senha na estação:** #{int(latest['id'])}")
+                    st.caption("Peça para a pessoa apontar a câmera do celular ou copiar o link:")
+                    st.code(url, language=None)
     has_analysis = any(pd.notna(latest.get(key)) and str(latest.get(key)).strip() for key in ("perfil", "destaque", "oportunidade", "mensagem"))
     render_etapas(etapa_atual(
         number_or_none(latest, "peso"),

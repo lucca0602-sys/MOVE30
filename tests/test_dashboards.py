@@ -105,3 +105,21 @@ def test_pessoal_nao_mistura_mesmo_nome(api_dashboard):  # noqa: F811
 
     opcoes = app.selectbox[0].options
     assert sorted(opcoes) == sorted([f"Ana Souza (#{primeira})", f"Ana Souza (#{segunda})"])
+
+
+def test_pessoal_reemite_qr_da_ultima_avaliacao(api_dashboard, db, monkeypatch):  # noqa: F811
+    monkeypatch.setenv("FRONT_PUBLIC_URL", "https://front.example/")
+    api = api_dashboard
+    avaliacao = cadastrar(api, "Bia Lima", "bia@example.com", 1.65)
+    with db.get_connection() as connection:
+        token = str(connection.execute(
+            "SELECT token_publico FROM participantes WHERE id = %s;", (avaliacao,)
+        ).fetchone()[0])
+
+    app = abrir("pessoal")
+    assert not any(token in bloco.value for bloco in app.code)
+
+    app.toggle(key="mostrar_qr").set_value(True).run()
+    assert not app.exception, app.exception
+    assert [bloco.value for bloco in app.code] == [f"https://front.example/dash/{token}"]
+    assert any(f"#{avaliacao}" in texto.value for texto in app.markdown)
