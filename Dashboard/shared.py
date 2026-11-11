@@ -169,6 +169,30 @@ def dashboard_url(participant_id: str | None = None) -> str:
     return f"{base}?{urlencode({'participante': str(participant_id)})}"
 
 
+def link_pessoal(token: str) -> str:
+    """Public /dash/<token> link, the same one the totem shows in the QR Code."""
+    base = os.getenv("FRONT_PUBLIC_URL", "https://ia-frontend-seven.vercel.app").strip().rstrip("/")
+    return f"{base}/dash/{token}"
+
+
+def buscar_token_publico(participant_id: int) -> str | None:
+    """Reads the public token straight from the database (staff-only, never through the API)."""
+    import psycopg
+
+    with psycopg.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+    ) as connection:
+        row = connection.execute(
+            "SELECT token_publico FROM participantes WHERE id = %s AND cancelada_em IS NULL;",
+            (int(participant_id),),
+        ).fetchone()
+    return str(row[0]) if row and row[0] else None
+
+
 def make_qr_png(url: str) -> bytes:
     import qrcode
 
