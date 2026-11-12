@@ -180,18 +180,21 @@
               <label for="tipo_avaliacao">Tipo de teste</label>
               <select id="tipo_avaliacao" name="tipo_avaliacao" required>
                 <option value="">Selecione o tipo</option>
-                <option value="completa">Com corrida (2 batimentos)</option>
-                <option value="simples">Simples, sem corrida (1 batimento)</option>
+                <option value="bike">Bike, por tempo (2 batimentos)</option>
+                <option value="agachamento">Agachamento, 20 repetições (2 batimentos)</option>
+                <option value="abdominal">Abdominal, 20 repetições (2 batimentos)</option>
+                <option value="flexao">Flexão, 20 repetições (2 batimentos)</option>
+                <option value="simples">Simples, sem esforço (1 batimento)</option>
               </select>
               <small class="field__error" aria-live="polite"></small>
             </div>
             <div class="field field--tipo-teste" id="campo-nivel">
-              <label for="tipo_teste">Nível do teste</label>
+              <label for="tipo_teste">Nível da bike</label>
               <select id="tipo_teste" name="tipo_teste" required>
                 <option value="">Selecione o nível</option>
-                <option value="light">Leve</option>
-                <option value="moderate">Moderado</option>
-                <option value="hard">Intenso</option>
+                <option value="light">Leve (1 min)</option>
+                <option value="moderate">Médio (2 min)</option>
+                <option value="hard">Pesado (3 min)</option>
               </select>
               <small class="field__error" aria-live="polite"></small>
             </div>

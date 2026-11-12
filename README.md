@@ -116,8 +116,8 @@ Aplique em ordem as migrations de `backend/migrations/` que faltam (a `006` já 
 O banco `move30_evento` já foi criado vazio em 07/11. Para voltar aos testes: `--voltar`. O `subir_evento.ps1` avisa em amarelo se ainda estiver no banco de testes.
 
 **Ligar (nesta ordem):**
-1. PostgreSQL (serviço do Windows) e Docker Desktop (n8n). O Ollama abre sozinho com o Windows.
-2. `.\scripts\subir_evento.ps1` abre 3 janelas (API interna, app público, Streamlit) e testa cada serviço.
+1. PostgreSQL (serviço do Windows). O Ollama abre sozinho com o Windows.
+2. `.\scripts\subir_evento.ps1` abre o Docker e o n8n (`scriptsbrir_docker.ps1`), depois 3 janelas (API interna, app público, Streamlit) que religam sozinhas se caírem, e testa cada serviço.
 3. `.\scripts\funnel.ps1`
 4. Num celular no 4G: abra `https://SEU-PROJETO.vercel.app`, faça um teste com o nome "TESTE EQUIPE" e confira se o QR abre o resultado.
 

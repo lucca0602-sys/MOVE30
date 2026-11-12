@@ -1,5 +1,5 @@
 from backend.models.participant import classificar_imc
-from backend.services.analytics_service import calcular_fc_score, classificar_fc_repouso
+from backend.services.analytics_service import calcular_fc_score, classificar_fc_repouso, descrever_atividade
 
 
 def _numero_para_json(valor):
@@ -45,7 +45,8 @@ def montar_leitura(participant: dict) -> str:
             frases.append(f"Batimentos em repouso {fc} bpm: acima de 100, elevado para repouso. Pode ser nervosismo ou café, mas sugira medir de novo com calma e, se continuar alto, conversar com um profissional de saúde.")
     fc_pos = participant.get("fc_pos_teste")
     if fc is not None and fc_pos is not None:
-        frases.append(f"Depois da corrida os batimentos foram a {fc_pos} bpm (subiram {fc_pos - fc} bpm).")
+        atividade = descrever_atividade(participant.get("modalidade"), participant.get("tipo_teste")) or "o esforço"
+        frases.append(f"Depois de {atividade} os batimentos foram a {fc_pos} bpm (subiram {fc_pos - fc} bpm).")
     return " ".join(frases)
 
 
@@ -56,6 +57,9 @@ def montar_payload_n8n(participant: dict) -> dict:
         "indicadores": {
             "nome": (participant.get("nome") or "").split()[0] if participant.get("nome") else "participante",
             "tipo_avaliacao": participant.get("tipo_avaliacao", "completa"),
+            "modalidade": participant.get("modalidade"),
+            # Ex.: "2 min de bike no nível médio" ou "20 repetições de flexão"; None no simples.
+            "atividade": descrever_atividade(participant.get("modalidade"), participant.get("tipo_teste")),
             "faixa_fc_repouso": classificar_fc_repouso(participant["fc_pre_teste"]),
             "leitura": montar_leitura(participant),
             "imc_texto": _br(float(participant["imc"]), 1) if participant["imc"] is not None else None,

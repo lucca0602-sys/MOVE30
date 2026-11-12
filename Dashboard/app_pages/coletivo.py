@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from shared import load_api_json, load_participants, participant_labels
+from shared import aviso_backend_offline, load_api_json, load_participants, participant_labels
 import visuals
 
 importlib.reload(visuals)
@@ -59,8 +59,7 @@ def render_dashboard():
 
     frame, error = load_participants()
     if error:
-        st.error(error)
-        st.info("Confira se o FastAPI está em execução e se API_URL aponta para ele.")
+        aviso_backend_offline(error)
         st.stop()
     if frame is None or frame.empty:
         st.info("Ainda não há avaliações cadastradas.")
@@ -167,11 +166,18 @@ def render_dashboard():
     with types_col:
         with st.container(border=True):
             section_heading("Tipos de avaliação", "donut", PALETTE["post"], 2)
-            if "tipo_teste" in latest.columns:
-                test_types = latest["tipo_teste"].fillna("Não informado").astype(str).value_counts()
-                labels = {"light": "Leve", "moderate": "Moderado", "hard": "Intenso"}
+            if "tipo_avaliacao" in latest.columns:
+                modalidade = latest["modalidade"] if "modalidade" in latest.columns else pd.Series(None, index=latest.index)
+                tipo_teste = latest["tipo_teste"] if "tipo_teste" in latest.columns else pd.Series(None, index=latest.index)
+                kinds = [
+                    "simples" if tipo == "simples" else (mod if isinstance(mod, str) and mod else ("corrida" if isinstance(nivel, str) and nivel else "nao_informado"))
+                    for tipo, mod, nivel in zip(latest["tipo_avaliacao"], modalidade, tipo_teste)
+                ]
+                test_types = pd.Series(kinds).value_counts()
+                labels = {"simples": "Simples", "bike": "Bike", "agachamento": "Agachamento", "abdominal": "Abdominal",
+                          "flexao": "Flexão", "corrida": "Esteira (antigo)", "nao_informado": "Não informado"}
                 pie_labels = [labels.get(key, key) for key in test_types.index]
-                pie_colors = [PALETTE["post"], PALETTE["pre"], PALETTE["purple"], PALETTE["score"], PALETTE["alert"]]
+                pie_colors = [PALETTE["post"], PALETTE["pre"], PALETTE["purple"], PALETTE["score"], PALETTE["alert"], "#ff8a5b", "#a9c0d9"]
                 fig = go.Figure(go.Pie(
                     labels=pie_labels, values=test_types.to_list(), hole=.68, sort=False,
                     marker=dict(colors=pie_colors[:len(pie_labels)], line=dict(color="#061426", width=2)),

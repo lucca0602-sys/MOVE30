@@ -45,7 +45,7 @@ mensagem: 2 parágrafos curtos separados por linha em branco; o primeiro explica
     {
       role: "user",
       content: `PESSOA: ${$json.body.indicadores.nome}, ${$json.body.indicadores.idade} anos, ${$json.body.indicadores.peso} kg, ${$json.body.indicadores.altura} m.
-IMC: ${$json.body.indicadores.imc_texto}. Batimentos em repouso: ${$json.body.indicadores.fc_pre_teste} bpm. Batimentos depois da corrida: ${$json.body.indicadores.fc_pos_teste ?? 'não medido (teste rápido, sem corrida)'}.
+IMC: ${$json.body.indicadores.imc_texto}. Batimentos em repouso: ${$json.body.indicadores.fc_pre_teste} bpm. Atividade: ${$json.body.indicadores.atividade ?? 'nenhuma (teste rápido, sem esforço)'}. Batimentos depois da atividade: ${$json.body.indicadores.fc_pos_teste ?? 'não medido'}.
 
 O QUE OS NÚMEROS SIGNIFICAM:
 ${$json.body.indicadores.leitura}`

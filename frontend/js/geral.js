@@ -7,10 +7,10 @@
   const fmt = (v, casas, sufixo) => v === null || v === undefined ? "—" : `${Number(v).toFixed(casas).replace(".", ",")}${sufixo}`;
 
   const CARDS = { peso: [1, " kg"], altura: [2, " m"], fc_pos_teste: [0, " bpm"], variacao_fc: [0, " bpm"] };
-  const NOMES_TIPO = { simples: "Teste rápido", light: "Leve", moderate: "Moderado", hard: "Intenso", nao_informado: "Não informado" };
+  const NOMES_TIPO = { simples: "Teste rápido", bike: "Bike", agachamento: "Agachamento", abdominal: "Abdominal", flexao: "Flexão", corrida: "Esteira (antigo)", nao_informado: "Não informado" };
   const CORES_FC = [G.COR.pre, G.COR.post, G.COR.alert];
   const CORES_IMC = [G.COR.pre, G.COR.post, G.COR.score, G.COR.laranja, G.COR.alert, G.COR.purple];
-  const CORES_TIPOS = [G.COR.post, G.COR.pre, G.COR.purple, G.COR.score, G.COR.alert];
+  const CORES_TIPOS = [G.COR.post, G.COR.pre, G.COR.purple, G.COR.score, G.COR.laranja, G.COR.alert, G.COR.muted];
 
   const graficos = {
     imc: G.velocimetro($("g-imc"), { min: 14, max: 40, zonas: G.ZONAS_IMC, casas: 1 }),
@@ -59,7 +59,7 @@
       const m = d.medias[campo];
       $(`m-${campo}`).textContent = fmt(m.valor, casas, sufixo);
       $(`n-${campo}`).textContent = nota(m, d.minimo_para_media);
-      // Evento só com teste rápido: card de corrida sem nenhum dado some em vez de ficar "—".
+      // Evento só com teste rápido: card de esforço sem nenhum dado some em vez de ficar "—".
       $(`m-${campo}`).closest(".card").hidden = m.n === 0;
     });
     graficos.imc.atualizar(d.medias.imc.valor);
@@ -67,7 +67,7 @@
     graficos.fc.atualizar(d.medias.fc_repouso.valor);
     $("n-fc_repouso").textContent = nota(d.medias.fc_repouso, d.minimo_para_media);
     graficos.indice.atualizar(d.indice_move.valor);
-    $("n-indice").textContent = d.indice_move.valor === null ? "só avaliações com corrida" : `${d.indice_move.n} pessoa(s) com corrida`;
+    $("n-indice").textContent = d.indice_move.valor === null ? "só avaliações de bike" : `${d.indice_move.n} pessoa(s) na bike`;
     distribuicao(graficos.distFc, "w-fc", d.distribuicao_fc_repouso, d.minimo_para_media);
     distribuicao(graficos.distImc, "w-imc", d.distribuicao_imc, d.minimo_para_media);
     distribuicao(

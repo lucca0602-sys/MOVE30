@@ -67,7 +67,7 @@ def test_paginas_com_muitos_participantes_e_nomes_repetidos(api_dashboard, db, p
 @pytest.mark.parametrize("peso,antes,depois,analise,esperada", [
     (None, None, None, False, "Peso"),
     (70, None, None, False, "FC de repouso"),
-    (70, 60, None, False, "Corrida e FC depois"),
+    (70, 60, None, False, "Esforço e FC depois"),
     (70, 60, 140, False, "Análise da IA"),
     (70, 60, 140, True, "Concluído"),
 ])
@@ -123,3 +123,11 @@ def test_pessoal_reemite_qr_da_ultima_avaliacao(api_dashboard, db, monkeypatch):
     assert not app.exception, app.exception
     assert [bloco.value for bloco in app.code] == [f"https://front.example/dash/{token}"]
     assert any(f"#{avaliacao}" in texto.value for texto in app.markdown)
+
+
+@pytest.mark.parametrize("pagina", PAGINAS)
+def test_paginas_avisam_backend_offline_sem_quebrar(monkeypatch, pagina):
+    monkeypatch.setenv("API_URL", "http://127.0.0.1:9")  # porta fechada: API desligada
+    st.cache_data.clear()
+    app = abrir(pagina)
+    assert any("Backend offline" in aviso.value for aviso in app.warning)
