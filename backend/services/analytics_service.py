@@ -28,6 +28,24 @@ VELOCIDADES_TESTE = {
     "moderate": 10.0,
     "hard": 14.0,
 }
+
+# A esteira saiu: o nível agora é da bike, que é por tempo. A resistência (0/50/100)
+# continua vindo do nível pela tabela acima, então o Índice MOVE não muda.
+DURACAO_BIKE_MIN = {"light": 1, "moderate": 2, "hard": 3}
+NOMES_NIVEL = {"light": "leve", "moderate": "médio", "hard": "pesado"}
+EXERCICIOS = {"agachamento": "agachamento", "abdominal": "abdominal", "flexao": "flexão"}
+REPETICOES_EXERCICIO = 20
+
+
+def descrever_atividade(modalidade: str | None, tipo_teste: str | None) -> str | None:
+    """Texto curto do esforço feito antes da FC depois; None no teste simples."""
+    if modalidade == "bike" and tipo_teste in DURACAO_BIKE_MIN:
+        return f"{DURACAO_BIKE_MIN[tipo_teste]} min de bike no nível {NOMES_NIVEL[tipo_teste]}"
+    if modalidade in EXERCICIOS:
+        return f"{REPETICOES_EXERCICIO} repetições de {EXERCICIOS[modalidade]}"
+    if modalidade is None and tipo_teste is not None:
+        return "a corrida na esteira"  # avaliações antigas, de antes da bike
+    return None
 def calcular_indice_move(
     fas: int,
     resistencia: float

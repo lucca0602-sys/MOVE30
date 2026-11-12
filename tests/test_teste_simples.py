@@ -68,8 +68,10 @@ def test_simples_e_corrida_dividem_a_mesma_fila_na_ordem(publico, client):
 
 
 @pytest.mark.parametrize("corpo,erro", [
-    ({"tipo_avaliacao": "completa"}, "nível"),                         # corrida sem nível
-    ({"tipo_avaliacao": "simples", "fc_pos_teste": 120}, "corrida"),    # simples com FC pós
+    ({"tipo_avaliacao": "completa"}, "nível"),                         # bike sem nível
+    ({"tipo_avaliacao": "completa", "modalidade": "bike"}, "nível"),
+    ({"tipo_avaliacao": "completa", "modalidade": "remo"}, "modalidade"),
+    ({"tipo_avaliacao": "simples", "fc_pos_teste": 120}, "esforço"),    # simples com FC pós
 ])
 def test_regras_do_tipo_de_teste(publico, corpo, erro):
     response = publico.post("/public/cadastro", json={**CADASTRO, **corpo})
@@ -181,3 +183,33 @@ def test_cadastro_sem_email_funciona(publico):
     response = publico.post("/public/cadastro", json={**corpo, "tipo_avaliacao": "simples"})
     assert response.status_code == 201, response.text
     assert publico.post("/public/cadastro", json={**corpo, "email": "", "tipo_avaliacao": "simples"}).status_code == 201
+
+
+@pytest.mark.parametrize("modalidade,nivel,atividade", [
+    ("bike", "light", "1 min de bike no nível leve"),
+    ("bike", "hard", "3 min de bike no nível pesado"),
+    ("flexao", None, "20 repetições de flexão"),
+    ("agachamento", "hard", "20 repetições de agachamento"),  # exercício ignora nível
+])
+def test_bike_e_exercicios_salvam_modalidade_e_vao_para_a_ia(publico, client, db, analise_ia, modalidade, nivel, atividade):
+    extra = {"modalidade": modalidade} | ({"tipo_teste": nivel} if nivel else {})
+    numero = _cadastrar(publico, "completa", **extra)["numero"]
+    with db.get_connection() as connection:
+        salvo = connection.execute(
+            "SELECT modalidade, tipo_teste, velocidade_teste, resistencia FROM participantes WHERE id = %s;", (numero,)
+        ).fetchone()
+    bike = modalidade == "bike"
+    assert salvo[0] == modalidade
+    assert salvo[1] == (nivel if bike else None)
+    assert salvo[2] is None  # bike não tem km/h
+    assert (salvo[3] is not None) == bike  # só a bike entra no Índice MOVE
+
+    payload = client.get(f"/participantes/{numero}/n8n-payload").json()["payload"]["indicadores"]
+    assert payload["modalidade"] == modalidade
+    assert payload["atividade"] == atividade
+
+
+def test_simples_nao_tem_atividade(publico, client):
+    numero = _cadastrar(publico)["numero"]
+    payload = client.get(f"/participantes/{numero}/n8n-payload").json()["payload"]["indicadores"]
+    assert payload["modalidade"] is None and payload["atividade"] is None
