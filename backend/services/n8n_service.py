@@ -24,15 +24,15 @@ def montar_leitura(participant: dict) -> str:
     idade = participant.get("idade")
     if imc is not None:
         if imc < 17:
-            frases.append(f"IMC {_br(imc, 1)}: abaixo da faixa de referência. NÃO é um ponto positivo. Sugira com carinho conversar com um profissional de saúde e reforce alimentação de qualidade.")
+            frases.append(f"IMC {_br(imc, 1)}: ABAIXO da faixa de referência (18,5 a 24,9). Diga isso com clareza e carinho; NÃO é um ponto positivo. Sugira conversar com um profissional de saúde e reforce alimentação de qualidade.")
         elif imc < 18.5:
-            frases.append(f"IMC {_br(imc, 1)}: um pouco abaixo da faixa de referência (18,5 a 24,9). Incentive alimentação de qualidade e exercícios de força.")
+            frases.append(f"IMC {_br(imc, 1)}: um pouco ABAIXO da faixa de referência (18,5 a 24,9). Diga isso com clareza e carinho. Incentive alimentação de qualidade e exercícios de força.")
         elif imc < 25:
-            frases.append(f"IMC {_br(imc, 1)}: dentro da faixa considerada saudável (18,5 a 24,9). É um ponto positivo.")
+            frases.append(f"IMC {_br(imc, 1)}: dentro da faixa de referência (18,5 a 24,9). É um ponto positivo.")
         elif imc < 30:
-            frases.append(f"IMC {_br(imc, 1)}: um pouco acima da faixa de referência. Incentive movimento diário e alimentação equilibrada, sem dieta restritiva.")
+            frases.append(f"IMC {_br(imc, 1)}: um pouco ACIMA da faixa de referência (18,5 a 24,9). Diga isso com clareza e carinho; NÃO diga que está dentro da faixa. Incentive movimento diário e alimentação equilibrada, sem dieta restritiva.")
         else:
-            frases.append(f"IMC {_br(imc, 1)}: acima da faixa de referência. Sugira com carinho acompanhamento de um profissional de saúde e incentive pequenos passos de movimento.")
+            frases.append(f"IMC {_br(imc, 1)}: ACIMA da faixa de referência (18,5 a 24,9). Diga isso com clareza e carinho, sem assustar; NÃO diga que está dentro da faixa. Sugira acompanhamento de um profissional de saúde e incentive pequenos passos de movimento.")
         if idade is not None and idade < 18:
             frases.append("A pessoa é adolescente: diga que, nessa idade, o IMC é avaliado por curvas de crescimento, então o número é só uma referência.")
     fc = participant.get("fc_pre_teste")
@@ -46,8 +46,20 @@ def montar_leitura(participant: dict) -> str:
     fc_pos = participant.get("fc_pos_teste")
     if fc is not None and fc_pos is not None:
         atividade = descrever_atividade(participant.get("modalidade"), participant.get("tipo_teste")) or "o esforço"
-        frases.append(f"Depois de {atividade} os batimentos foram a {fc_pos} bpm (subiram {fc_pos - fc} bpm).")
+        frases.append(f"Depois de {atividade} os batimentos foram a {fc_pos} bpm (subiram {fc_pos - fc} bpm): é a resposta normal do corpo ao esforço. NÃO diga que isso prova bom condicionamento.")
+    frases.append(f"Ponto positivo para o destaque: {_ponto_positivo(imc, fc, fc_pos)}")
     return " ".join(frases)
+
+
+def _ponto_positivo(imc: float | None, fc: int | None, fc_pos: int | None) -> str:
+    """O back-end escolhe o que dá para elogiar de verdade; a IA não precisa adivinhar."""
+    if imc is not None and 18.5 <= imc < 25:
+        return f"o IMC {_br(imc, 1)} dentro da faixa de referência."
+    if fc is not None and fc <= 100:
+        return f"os batimentos em repouso de {fc} bpm, {'abaixo de 60, sinal de coração eficiente' if fc < 60 else 'dentro da faixa normal'}."
+    if fc_pos is not None:
+        return "ter encarado a atividade até o fim e medido seus números: conhecer o próprio corpo é o primeiro passo."
+    return "ter medido seus números hoje: conhecer o próprio corpo é o primeiro passo para cuidar dele."
 
 
 def montar_payload_n8n(participant: dict) -> dict:
