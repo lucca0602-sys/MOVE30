@@ -100,8 +100,11 @@ def _media(valores: list[float], casas: int = 1) -> dict:
     return {"valor": round(sum(valores) / n, casas) if n >= MINIMO_PARA_MEDIA else None, "n": n}
 
 
-def calcular_painel_publico(participantes: list[dict]) -> dict:
-    """Só agregados do grupo para o painel público (/geral). Nenhum valor individual sai daqui."""
+def calcular_painel_publico(participantes: list[dict], agora: datetime | None = None) -> dict:
+    """Só agregados do grupo para o painel público (/geral). Nenhum valor individual sai daqui.
+
+    `agora` ancora o gráfico por hora (o arquivo pós-feira usa a hora da última avaliação).
+    """
     from backend.services.analytics_service import calcular_indice_move_coletivo
 
     # Avaliação mais recente de cada pessoa, como no dashboard do Streamlit.
@@ -130,7 +133,7 @@ def calcular_painel_publico(participantes: list[dict]) -> dict:
     indice = calcular_indice_move_coletivo(pessoas)
     return {
         "participantes": total,
-        "avaliacoes_por_hora": contar_por_hora(participantes),
+        "avaliacoes_por_hora": contar_por_hora(participantes, agora),
         "minimo_para_media": MINIMO_PARA_MEDIA,
         "medias": {
             "peso": _media(nums("peso")),

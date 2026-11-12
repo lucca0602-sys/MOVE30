@@ -1,8 +1,7 @@
 (function () {
   "use strict";
-  const config = window.MOVE30_CONFIG || {};
-  const API = String(config.publicApiBaseUrl ?? "http://127.0.0.1:8003").replace(/\/$/, "");
   const INTERVALO_MS = 5000; // igual ao Streamlit
+  const INTERVALO_ARQUIVO_MS = 60000; // arquivo pós-feira não muda: consulta bem menos
   const G = window.MOVE30_GRAFICOS;
   const $ = (id) => document.getElementById(id);
   const fmt = (v, casas, sufixo) => v === null || v === undefined ? "—" : `${Number(v).toFixed(casas).replace(".", ",")}${sufixo}`;
@@ -81,18 +80,24 @@
 
   async function atualizar() {
     const pill = $("pill");
+    let proximo = INTERVALO_MS;
     try {
-      const r = await fetch(`${API}/public/coletivo`, { cache: "no-store", headers: { Accept: "application/json" } });
-      if (!r.ok) throw new Error(String(r.status));
-      render(await r.json());
+      const { dados, origem } = await window.MOVE30_FONTE.buscar("coletivo");
+      render(dados);
       pill.classList.remove("pill--off");
-      pill.textContent = `Tempo real · ${new Date().toLocaleTimeString("pt-BR")}`;
+      if (origem === "arquivo") {
+        proximo = INTERVALO_ARQUIVO_MS;
+        const quando = dados.publicado_em ? ` · atualizado em ${new Date(dados.publicado_em).toLocaleDateString("pt-BR")}` : "";
+        pill.textContent = `Resultado final do evento${quando}`;
+      } else {
+        pill.textContent = `Tempo real · ${new Date().toLocaleTimeString("pt-BR")}`;
+      }
     } catch {
       // Mantém os últimos números na tela e avisa; tenta de novo no próximo ciclo.
       pill.classList.add("pill--off");
       pill.textContent = "Sem conexão · tentando de novo";
     } finally {
-      setTimeout(atualizar, INTERVALO_MS);
+      setTimeout(atualizar, proximo);
     }
   }
   atualizar();

@@ -19,3 +19,6 @@ linha_medicao/**/build/
 
 # Backups do .env feitos pelo scripts/preparar_evento.py (têm senha)
 .env.bak-*
+
+# Dependências das Vercel Functions (frontend/api)
+node_modules/

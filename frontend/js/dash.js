@@ -32,12 +32,11 @@
     }
     graficos.imc.atualizar(r.imc);
     graficos.fc.atualizar(r.fc_repouso);
-    // Média do grupo: só agregados do /public/coletivo; atualiza no máximo a cada 30 s.
+    // Média do grupo: só agregados do /public/coletivo (ou do arquivo); atualiza no máximo a cada 30 s.
     if (Date.now() - ultimaComparacao > 30000) {
       ultimaComparacao = Date.now();
-      fetch(`${M.PUBLIC_API}/public/coletivo`, { cache: "no-store" })
-        .then((resp) => (resp.ok ? resp.json() : null))
-        .then((g) => {
+      window.MOVE30_FONTE.buscar("coletivo")
+        .then(({ dados: g }) => {
           const imcGrupo = g?.medias?.imc?.valor, fcGrupo = g?.medias?.fc_repouso?.valor;
           if (imcGrupo == null || fcGrupo == null || r.imc == null || r.fc_repouso == null) return;
           $("bloco-comparacao").hidden = false;
@@ -49,7 +48,7 @@
           }
           graficos.comparacao.imc.atualizar(r.imc, imcGrupo);
           graficos.comparacao.fc.atualizar(r.fc_repouso, fcGrupo);
-          $("comparacao-nota").textContent = `Média de ${g.medias.imc.n} pessoas avaliadas no MOVE 30 até agora (IMC ${fmt(imcGrupo, 1, "")} · ${fmt(fcGrupo, 0, " bpm")}).`;
+          $("comparacao-nota").textContent = `Média de ${g.medias.imc.n} pessoas avaliadas no MOVE 30${g.arquivo ? "" : " até agora"} (IMC ${fmt(imcGrupo, 1, "")} · ${fmt(fcGrupo, 0, " bpm")}).`;
         })
         .catch(() => {});
     }

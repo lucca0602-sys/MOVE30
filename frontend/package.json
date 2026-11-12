@@ -1,0 +1,9 @@
+{
+  "name": "move30-frontend",
+  "private": true,
+  "type": "module",
+  "description": "Front estático do MOVE 30 + Vercel Functions do arquivo pós-feira (api/).",
+  "dependencies": {
+    "pg": "8.13.1"
+  }
+}

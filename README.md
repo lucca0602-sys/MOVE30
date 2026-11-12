@@ -75,12 +75,14 @@ O token do QR é um UUID aleatório: não dá pra chutar o link de outra pessoa 
 | `CORS_ORIGIN_REGEX` | `^https://move30(-[a-z0-9-]+)?\.vercel\.app$` | opcional: previews da Vercel |
 | `IA_TIMEOUT_S` | `180` | tempo máximo de uma chamada à IA |
 | `IA_INTERVALO_S` | `600` | espera antes de tentar a IA de novo |
+| `ARQUIVO_DATABASE_URL` | `postgresql://...neon.tech/neondb?sslmode=require` | Neon do arquivo pós-feira (usuário dono; só o `publicar_resultados` usa) |
 
 ### Vercel
 
 | Variável | Valor |
 |---|---|
 | `MOVE30_API_URL` | URL do Funnel, ex.: `https://meu-pc.tail1234.ts.net` (sem barra no fim) |
+| `ARQUIVO_DATABASE_URL` | connection string do Neon com o usuário **só-leitura** (ver "Depois da feira") |
 
 O build (`frontend/build-config.mjs`) grava essa URL em `js/config.js`. **Mudou a variável → faça Redeploy.**
 
@@ -130,6 +132,37 @@ O banco `move30_evento` já foi criado vazio em 07/11. Para voltar aos testes: `
 **A IA demora** (~1-2 min por pessoa na CPU). A tela mostra "Analisando..." e o QR já aparece antes; a pessoa pode ir embora e ver depois no link. Se a IA falhar, a API interna tenta de novo a cada 10 min (`IA_INTERVALO_S`).
 
 **Desligar:** `.\scripts\funnel.ps1 -Desligar` e feche as janelas.
+
+## Depois da feira — links no ar com o PC desligado
+
+O `/dash/<token>` e o `/geral` tentam primeiro o backend ao vivo (Funnel). Se ele não responder,
+leem o **arquivo** publicado na Vercel (`frontend/api/`, Vercel Functions) a partir de um Postgres
+grátis no Neon. Os QRs não mudam. O arquivo só tem o que o link já mostrava (primeiro nome, idade,
+medidas, análise da IA, data) e os agregados do `/geral`: nada de e-mail, nome completo ou ID, e
+se a IA escreveu o nome completo no texto ele vira só o primeiro nome. Nenhum dado vai para o git.
+
+**Uma vez só:**
+1. https://neon.tech → crie um projeto (plano Free; não apaga projeto parado, só "dorme" e acorda em ~1 s).
+2. Copie a connection string do usuário dono para `ARQUIVO_DATABASE_URL` no `.env` do PC.
+3. No SQL Editor do Neon, crie um usuário só-leitura para a Vercel (rode **depois** da primeira publicação, que cria as tabelas):
+   ```sql
+   CREATE ROLE move30_leitura LOGIN PASSWORD 'troque-esta-senha';
+   GRANT USAGE ON SCHEMA public TO move30_leitura;
+   GRANT SELECT ON resultados_publicos, painel_publico TO move30_leitura;
+   ```
+4. Vercel → Settings → Environment Variables: `ARQUIVO_DATABASE_URL` = connection string com `move30_leitura` (a mesma do Neon trocando usuário e senha). Redeploy.
+
+**Publicar (depois da feira, e de novo quando quiser atualizar):**
+```powershell
+.\.venv\Scripts\python.exe -m scripts.publicar_resultados             # só mostra quantos iria publicar
+.\.venv\Scripts\python.exe -m scripts.publicar_resultados --publicar  # manda para o Neon
+```
+Lê do `move30_evento` (troque com `--banco`), publica só avaliações com análise pronta e pode rodar
+quantas vezes quiser: atualiza por token e tira da nuvem o que foi cancelado. Publique só depois da
+feira: com o arquivo publicado, um token que ele não tem vira "não encontrado" quando o Funnel falha.
+
+**Conferir:** desligue as APIs e o Funnel, abra um `/dash/<token>` real e o `/geral` no 4G. O `/geral`
+mostra "Resultado final do evento". Depois disso dá para tirar `MOVE30_API_URL` da Vercel.
 
 ## Plano B — internet caiu
 
