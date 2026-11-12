@@ -16,12 +16,19 @@ else { Write-Host "[!!] Banco: $Banco (TESTES). No dia do evento rode antes: .ve
 Testar "Ollama" "http://127.0.0.1:11434/api/tags"
 Testar "n8n" "http://127.0.0.1:5678/healthz"
 
+# Cada serviço roda num laço: se cair (erro, falta de memória), religa sozinho em 3 s.
+# Para parar de vez, feche a janela dele.
+function Subir($titulo, $argumentos) {
+    $laco = "`$Host.UI.RawUI.WindowTitle = 'MOVE30 - $titulo'; while (`$true) { & '$Py' $argumentos; Write-Host '[$titulo] parou; religando em 3 s (feche a janela para encerrar)' -ForegroundColor Yellow; Start-Sleep 3 }"
+    Start-Process powershell -WorkingDirectory $Raiz -ArgumentList "-NoExit", "-Command", $laco
+}
+
 # API interna: rede local (ESP32, dashboards Streamlit). Nunca vai para o Funnel.
-Start-Process powershell -WorkingDirectory $Raiz -ArgumentList "-NoExit", "-Command", "& '$Py' -m uvicorn backend.main:app --host 0.0.0.0 --port 8002"
+Subir "API interna" "-m uvicorn backend.main:app --host 0.0.0.0 --port 8002"
 # App público: só escuta em 127.0.0.1; quem publica é o Funnel.
-Start-Process powershell -WorkingDirectory $Raiz -ArgumentList "-NoExit", "-Command", "& '$Py' -m uvicorn backend.public_app:app --host 127.0.0.1 --port 8003"
+Subir "App publico" "-m uvicorn backend.public_app:app --host 127.0.0.1 --port 8003"
 # Dashboards locais (TV / equipe).
-Start-Process powershell -WorkingDirectory $Raiz -ArgumentList "-NoExit", "-Command", "& '$Py' -m streamlit run Dashboard\app.py"
+Subir "Streamlit" "-m streamlit run Dashboard\app.py"
 
 Start-Sleep -Seconds 6
 Testar "API interna" "http://127.0.0.1:8002/db-health"
