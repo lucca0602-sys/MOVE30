@@ -1,5 +1,5 @@
 # Sobe tudo para o dia do evento, cada serviço numa janela própria.
-# Pré-requisitos ligados antes: PostgreSQL e Docker (n8n). O Ollama roda como app do Windows.
+# Pré-requisito: PostgreSQL ligado. O Docker e o n8n este script abre sozinho; o Ollama roda como app do Windows.
 $Raiz = Split-Path -Parent $PSScriptRoot
 $Py = Join-Path $Raiz ".venv\Scripts\python.exe"
 
@@ -14,7 +14,8 @@ if ($Banco -eq "move30_evento") { Write-Host "[ok] Banco: $Banco (evento)" -Fore
 else { Write-Host "[!!] Banco: $Banco (TESTES). No dia do evento rode antes: .venv\Scripts\python.exe -m scripts.preparar_evento --ativar" -ForegroundColor Yellow }
 
 Testar "Ollama" "http://127.0.0.1:11434/api/tags"
-Testar "n8n" "http://127.0.0.1:5678/healthz"
+# Abre o Docker (pelo explorer, para não morrer junto com este terminal) e liga o n8n.
+& (Join-Path $PSScriptRoot "abrir_docker.ps1")
 
 # Cada serviço roda num laço: se cair (erro, falta de memória), religa sozinho em 3 s.
 # Para parar de vez, feche a janela dele.
