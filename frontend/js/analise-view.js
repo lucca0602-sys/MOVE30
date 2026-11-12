@@ -2,9 +2,7 @@
 // Todo texto vindo da API/IA entra via textContent (nunca innerHTML).
 (function () {
   "use strict";
-  const config = window.MOVE30_CONFIG || {};
-  // "" = mesma origem (servidor local do plano B repassa /public para o app público).
-  const PUBLIC_API = String(config.publicApiBaseUrl ?? "http://127.0.0.1:8003").replace(/\/$/, "");
+  const { PUBLIC_API, buscar } = window.MOVE30_FONTE;
 
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -14,17 +12,12 @@
   };
 
   async function buscarResultado(token) {
-    const response = await fetch(`${PUBLIC_API}/public/resultado/${encodeURIComponent(token)}`, {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    if (response.status === 404 || response.status === 422) {
-      const erro = new Error("Resultado não encontrado. Confira se o link está completo.");
-      erro.naoEncontrado = true;
+    try {
+      return (await buscar(`resultado/${encodeURIComponent(token)}`)).dados;
+    } catch (erro) {
+      if (erro.naoEncontrado) erro.message = "Resultado não encontrado. Confira se o link está completo.";
       throw erro;
     }
-    if (!response.ok) throw new Error("O servidor do MOVE 30 não respondeu. Tente de novo em instantes.");
-    return response.json();
   }
 
   // Bloco da análise da IA: perfil, mensagem, destaque e recomendação.
