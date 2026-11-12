@@ -38,7 +38,9 @@
   const tipoAvaliacao = form.elements.namedItem("tipo_avaliacao");
   const campoNivel = document.getElementById("campo-nivel");
   const campoFcPos = document.getElementById("campo-fc-pos");
+  // O select escolhe a atividade; "simples" vira tipo_avaliacao simples, o resto é "completa" + modalidade.
   const simples = () => tipoAvaliacao.value === "simples";
+  const bike = () => tipoAvaliacao.value === "bike";
   const integer = (value) => Number.parseInt(String(value), 10);
   const rules = {
     nome: (value) => value.trim().length >= 2 && value.trim().length <= 100 ? "" : "Informe o nome completo (2 a 100 caracteres).",
@@ -48,9 +50,9 @@
     altura: (value) => Number.isFinite(Number(value.trim().replace(",", "."))) && Number(value.trim().replace(",", ".")) >= 1 && Number(value.trim().replace(",", ".")) <= 2.2 ? "" : "Informe uma altura entre 1,00 e 2,20 m.",
     fc_pre_teste: (value) => !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
     fc_pos_teste: (value) => simples() || !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
-    tipo_avaliacao: (value) => ["completa", "simples"].includes(value) ? "" : "Escolha com corrida ou simples.",
-    // O nível (leve/moderado/intenso) só existe no teste com corrida.
-    tipo_teste: (value) => simples() || ["light", "moderate", "hard"].includes(value) ? "" : "Selecione o nível do teste.",
+    tipo_avaliacao: (value) => ["bike", "agachamento", "abdominal", "flexao", "simples"].includes(value) ? "" : "Escolha o tipo de teste.",
+    // O nível (leve/médio/pesado = 1/2/3 min) só existe na bike.
+    tipo_teste: (value) => !bike() || ["light", "moderate", "hard"].includes(value) ? "" : "Selecione o nível da bike.",
   };
   const validateField = (input) => {
     const error = rules[input.name](input.value);
@@ -66,14 +68,16 @@
     field.querySelector(".field__error").textContent = "";
     input.setAttribute("aria-invalid", "false");
   };
-  // Simples: some o nível do teste e a FC depois da corrida.
+  // Nível só na bike; FC depois do esforço some no simples.
   const aplicarTipo = () => {
-    campoNivel.hidden = simples();
+    campoNivel.hidden = !bike();
     campoFcPos.hidden = simples();
-    if (simples()) {
+    if (!bike()) {
       form.elements.namedItem("tipo_teste").value = "";
-      form.elements.namedItem("fc_pos_teste").value = "";
       limparErro(form.elements.namedItem("tipo_teste"));
+    }
+    if (simples()) {
+      form.elements.namedItem("fc_pos_teste").value = "";
       limparErro(form.elements.namedItem("fc_pos_teste"));
     }
   };
@@ -93,7 +97,7 @@
     feedback.classList.remove("is-error");
     const fields = [...form.querySelectorAll("input, select")].filter((input) => !input.closest("[hidden]"));
     let fieldsValid = fields.map(validateField).every(Boolean);
-    // Medição manual: no simples são peso + 1 batimento; com corrida, os três.
+    // Medição manual: no simples são peso + 1 batimento; com esforço, os três.
     const nomesManuais = simples() ? ["peso", "fc_pre_teste"] : ["peso", "fc_pre_teste", "fc_pos_teste"];
     const manualFields = nomesManuais.map((name) => form.elements.namedItem(name));
     const manualStarted = manualFields.some((input) => input.value.trim() !== "");
@@ -120,9 +124,10 @@
       altura: decimal(values.get("altura")),
       idade: integer(values.get("idade")),
       fas: integer(values.get("fas")),
-      tipo_avaliacao: String(values.get("tipo_avaliacao")),
+      tipo_avaliacao: simples() ? "simples" : "completa",
     };
-    if (!simples()) participant.tipo_teste = String(values.get("tipo_teste"));
+    if (!simples()) participant.modalidade = String(values.get("tipo_avaliacao"));
+    if (bike()) participant.tipo_teste = String(values.get("tipo_teste"));
     if (String(values.get("peso")).trim()) participant.peso = decimal(values.get("peso"));
     if (String(values.get("fc_pre_teste")).trim()) participant.fc_pre_teste = integer(values.get("fc_pre_teste"));
     if (!simples() && String(values.get("fc_pos_teste")).trim()) participant.fc_pos_teste = integer(values.get("fc_pos_teste"));

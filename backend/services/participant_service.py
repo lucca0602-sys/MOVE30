@@ -9,6 +9,7 @@ from backend.services.analytics_service import (
     calcular_indice_move,
     VELOCIDADES_TESTE,
     calcular_fc_score,
+    descrever_atividade,
 )
 
 class MeasurementAlreadySet(Exception):
@@ -23,13 +24,14 @@ def salvar_participante(participant: ParticipantIndicators):
                 if participant.peso is not None and participant.altura is not None
                 else None
             )
-            # Teste simples não tem corrida: sem velocidade, resistência nem Índice MOVE.
+            # Só a bike tem nível: a resistência (0/50/100) vem dele e entra no Índice MOVE.
+            # Bike não tem velocidade em km/h; simples e exercícios ficam sem os três.
+            velocidade_teste = None
             if participant.tipo_teste is not None:
-                velocidade_teste = VELOCIDADES_TESTE[participant.tipo_teste]
-                resistencia = calcular_resistencia(velocidade_teste)
+                resistencia = calcular_resistencia(VELOCIDADES_TESTE[participant.tipo_teste])
                 indice_move = calcular_indice_move(participant.fas, resistencia)
             else:
-                velocidade_teste = resistencia = indice_move = None
+                resistencia = indice_move = None
             cursor.execute(
                 """
                 INSERT INTO participantes (
@@ -46,9 +48,10 @@ def salvar_participante(participant: ParticipantIndicators):
                     imc,
                     resistencia,
                     indice_move,
-                    tipo_avaliacao
+                    tipo_avaliacao,
+                    modalidade
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, token_publico;
                 """,
                 (
@@ -66,6 +69,7 @@ def salvar_participante(participant: ParticipantIndicators):
                     resistencia,
                     indice_move,
                     participant.tipo_avaliacao,
+                    participant.modalidade,
                 ),
             )
             participant_id, token = cursor.fetchone()
@@ -193,7 +197,7 @@ def status_estacoes() -> dict:
             em_medicao = cursor.fetchall()
             cursor.execute(
                 """
-                SELECT p.id, p.nome
+                SELECT p.id, p.nome, p.modalidade, p.tipo_teste
                 FROM participantes AS p
                 WHERE p.cancelada_em IS NULL
                   AND p.altura IS NOT NULL
@@ -230,10 +234,15 @@ def status_estacoes() -> dict:
                 "peso": row["peso"],
                 "fc_pre_teste": row["fc_pre_teste"],
                 "fc_pos_teste": row["fc_pos_teste"],
+                # O que a pessoa faz entre as duas FCs (a equipe prepara a bike no nível certo).
+                "atividade": descrever_atividade(row["modalidade"], row["tipo_teste"]),
             }
             for row in em_medicao
         ],
-        "fila": fila,
+        "fila": [
+            {"id": row["id"], "nome": row["nome"], "atividade": descrever_atividade(row["modalidade"], row["tipo_teste"])}
+            for row in fila
+        ],
         "ultima_concluida": ultima_concluida,
     }
 

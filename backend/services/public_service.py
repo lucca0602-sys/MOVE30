@@ -6,7 +6,7 @@ from psycopg.rows import dict_row
 
 from backend.database import get_connection
 from backend.models.participant import classificar_imc
-from backend.services.analytics_service import calcular_fc_score, classificar_fc_repouso
+from backend.services.analytics_service import calcular_fc_score, classificar_fc_repouso, descrever_atividade
 
 
 def _numero(valor):
@@ -24,6 +24,7 @@ def buscar_resultado_publico(token: UUID) -> dict | None:
             cursor.execute(
                 """
                 SELECT nome, idade, peso, altura, imc, fc_pre_teste, fc_pos_teste, tipo_avaliacao,
+                       modalidade, tipo_teste,
                        perfil, destaque, oportunidade, mensagem, criado_em
                 FROM participantes
                 WHERE token_publico = %s AND cancelada_em IS NULL;
@@ -51,6 +52,7 @@ def buscar_resultado_publico(token: UUID) -> dict | None:
     return {
         "primeiro_nome": row["nome"].split()[0],
         "tipo_avaliacao": row["tipo_avaliacao"],
+        "atividade": descrever_atividade(row["modalidade"], row["tipo_teste"]),
         "idade": row["idade"],
         "peso": _numero(row["peso"]),
         "altura": _numero(row["altura"]),
@@ -124,7 +126,10 @@ def calcular_painel_publico(participantes: list[dict]) -> dict:
 
     tipos: dict[str, int] = {}
     for p in pessoas:
-        chave = "simples" if p.get("tipo_avaliacao") == "simples" else (p.get("tipo_teste") or "nao_informado")
+        if p.get("tipo_avaliacao") == "simples":
+            chave = "simples"
+        else:
+            chave = p.get("modalidade") or ("corrida" if p.get("tipo_teste") else "nao_informado")
         tipos[chave] = tipos.get(chave, 0) + 1
 
     indice = calcular_indice_move_coletivo(pessoas)

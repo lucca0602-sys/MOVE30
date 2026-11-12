@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from shared import (
+    aviso_backend_offline,
     api_base,
     buscar_token_publico,
     etapa_atual,
@@ -52,8 +53,7 @@ def render_dashboard():
 
     frame, error = load_participants()
     if error:
-        st.error(error)
-        st.info("Confira se o FastAPI está em execução e se API_URL aponta para ele.")
+        aviso_backend_offline(error)
         st.stop()
     if frame is None or frame.empty:
         st.info("Ainda não há avaliações cadastradas.")

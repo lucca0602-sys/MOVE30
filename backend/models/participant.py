@@ -11,17 +11,26 @@ class ParticipantIndicators(BaseModel):
     fas: int = Field(ge=1, le=7)
     fc_pre_teste: int | None = Field(default=None, ge=30, le=220)
     fc_pos_teste: int | None = Field(default=None, ge=30, le=220)
-    # "simples": sem corrida, a estação mede peso e 1 batimento. "completa": com corrida.
+    # "simples": sem esforço, a estação mede peso e 1 batimento.
+    # "completa": com esforço (bike ou 20 repetições), FC antes e depois.
     tipo_avaliacao: Literal["completa", "simples"] = "completa"
+    modalidade: Literal["bike", "agachamento", "abdominal", "flexao"] | None = None
+    # Nível da bike (leve/médio/pesado = 1/2/3 min). Os exercícios não têm nível.
     tipo_teste: Literal["light", "moderate", "hard"] | None = None
 
     @model_validator(mode="after")
     def regras_do_tipo(self):
-        if self.tipo_avaliacao == "completa" and self.tipo_teste is None:
-            raise ValueError("Selecione o nível do teste com corrida.")
         if self.tipo_avaliacao == "simples":
             if self.fc_pos_teste is not None:
-                raise ValueError("O teste simples não tem batimento depois da corrida.")
+                raise ValueError("O teste simples não tem batimento depois do esforço.")
+            self.modalidade = None
+            self.tipo_teste = None
+            return self
+        if self.modalidade is None:
+            self.modalidade = "bike"  # a esteira saiu; o teste com nível agora é a bike
+        if self.modalidade == "bike" and self.tipo_teste is None:
+            raise ValueError("Selecione o nível da bike.")
+        if self.modalidade != "bike":
             self.tipo_teste = None
         return self
 

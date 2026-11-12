@@ -3,7 +3,7 @@ import importlib
 import pandas as pd
 import streamlit as st
 
-from shared import etapa_atual, format_number, load_api_json, render_etapas
+from shared import aviso_backend_offline, etapa_atual, format_number, load_api_json, render_etapas
 import visuals
 
 importlib.reload(visuals)
@@ -17,7 +17,7 @@ def render_dashboard():
 
     status = load_api_json("/estacao/status")
     if status is None:
-        st.error("Não foi possível obter o estado da estação. Confira se o FastAPI está em execução.")
+        aviso_backend_offline()
         st.stop()
 
     estacoes = status.get("estacoes", [])
@@ -29,6 +29,8 @@ def render_dashboard():
     for estacao in estacoes:
         with st.container(border=True):
             section_heading(f"{estacao['nome']} (#{estacao['id']})", "users", PALETTE["post"], 2)
+            atividade = estacao.get("atividade")
+            st.markdown(f"**Atividade:** {atividade}" if atividade else "**Atividade:** teste simples (sem esforço)")
             render_etapas(etapa_atual(estacao["peso"], estacao["fc_pre_teste"], estacao["fc_pos_teste"], False))
             st.caption(
                 f"Altura: {format_number(estacao['altura'], 2, ' m')} · "
@@ -48,7 +50,7 @@ def render_dashboard():
         section_heading(f"Fila de espera: {len(fila)}", "clock", PALETTE["pre"], 2)
         if fila:
             frame = pd.DataFrame(
-                [{"Número": f"#{item['id']}", "Nome": item["nome"]} for item in fila]
+                [{"Número": f"#{item['id']}", "Nome": item["nome"], "Atividade": item.get("atividade") or "Simples"} for item in fila]
             )
             st.dataframe(frame, hide_index=True, width="stretch", alt="Pessoas aguardando a estação de medição")
         else:

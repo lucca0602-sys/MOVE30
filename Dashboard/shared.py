@@ -35,11 +35,11 @@ def api_base() -> str:
     return os.getenv("API_URL", "http://127.0.0.1:8002").rstrip("/")
 
 
-ETAPAS = ("Cadastro", "Peso", "FC de repouso", "Corrida e FC depois", "Análise da IA", "Concluído")
+ETAPAS = ("Cadastro", "Peso", "FC de repouso", "Esforço e FC depois", "Análise da IA", "Concluído")
 INSTRUCOES = {
     1: "Suba na balança e fique parado até esta etapa mudar.",
     2: "Coloque o dedo no sensor e mantenha parado por cerca de 15 s.",
-    3: "Tire o dedo e corra. Ao terminar, coloque o dedo de novo: a leitura começa no mínimo 60 s depois da FC de repouso.",
+    3: "Tire o dedo e faça a atividade (bike pelo tempo do nível ou as 20 repetições). Ao terminar, coloque o dedo de novo: a leitura começa no mínimo 60 s depois da FC de repouso.",
     4: "Medições salvas. A IA está gerando a análise; costuma levar cerca de 1 minuto.",
     5: "Avaliação completa. O resultado está no dashboard pessoal.",
 }
@@ -99,6 +99,17 @@ def load_participants() -> tuple[pd.DataFrame | None, str | None]:
         return None, f"Não foi possível acessar a API em {api_base()}."
     except (ValueError, UnicodeDecodeError):
         return None, "A API não retornou JSON válido."
+
+
+def aviso_backend_offline(detalhe: str | None = None) -> None:
+    """Same warning on every page; the page keeps refreshing and recovers by itself."""
+    st.warning(
+        "**Backend offline.** O painel continua aberto e volta sozinho quando a API "
+        f"({api_base()}) responder de novo. Confira se o `subir_evento.ps1` está rodando.",
+        icon=":material/cloud_off:",
+    )
+    if detalhe:
+        st.caption(detalhe)
 
 
 @st.cache_data(ttl=1, max_entries=4, show_spinner=False)
