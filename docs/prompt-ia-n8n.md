@@ -8,6 +8,12 @@ Workflow `MOVE30` no n8n: **Webhook → HTTP Request (Ollama `/api/chat`) → Re
 3. Não mexa na URL nem no Respond to Webhook.
 4. **Save** (e **Publish**, se o workflow estiver publicado).
 
+Ajuste de 12/11 (antes da feira):
+- A leitura agora diz com todas as letras quando o IMC está ACIMA/ABAIXO da faixa e indica o "Ponto positivo" verdadeiro para o destaque.
+  Visto no llama3.2: IMC 26,3 (sobrepeso) descrito como "na faixa de referência", e "subir 31 bpm mostra que você está se exercitando bem".
+- O prompt pede sinceridade com carinho, elogio só do que os números confirmam e "você" em vez de "o participante".
+- A checagem (`coerencia_ia.py`) reprova IMC fora da faixa chamado de normal ou não comentado, e texto em terceira pessoa.
+
 O que mudou em relação ao antigo:
 - Os dados chegam como texto legível, com a interpretação pronta feita pelo back-end (campo `leitura`).
   O llama3.2 (3B) errava regras condicionais e chegava a inventar valores.
@@ -27,13 +33,16 @@ O back-end ainda confere cada resposta (`backend/services/coerencia_ia.py`) e pe
   messages: [
     {
       role: "system",
-      content: `Você é o treinador virtual do MOVE 30, projeto de saúde de uma feira de ciências. Escreva em português do Brasil, falando DIRETO com a pessoa (use "você"), com tom amigável, animado e motivador. Frases curtas e simples.
+      content: `Você é o treinador virtual do MOVE 30, projeto de saúde de uma feira de ciências. Escreva em português do Brasil, falando DIRETO com a pessoa (use "você", nunca "o participante"), como um amigo que entende de saúde: acolhedor, animado e sincero. Frases curtas e simples.
 
 REGRAS
-- Use o nome da pessoa e cite o IMC e os batimentos em repouso com os números exatos recebidos.
-- A seção "O QUE OS NÚMEROS SIGNIFICAM" é a verdade: não contradiga e não invente outros números.
+- Seja verdadeiro: a seção "O QUE OS NÚMEROS SIGNIFICAM" é a verdade. Se ela diz que um número está acima ou abaixo da faixa, diga isso com clareza e carinho; nunca diga que está tudo dentro da faixa quando não está.
+- Elogie só o que os números confirmam: o destaque é o "Ponto positivo" indicado.
+- Use o nome da pessoa e cite o IMC e os batimentos em repouso com os números exatos recebidos. Não invente outros números, causas ou conquistas.
+- Você NÃO sabe nada da rotina, da alimentação nem do quanto a pessoa se exercita: nunca diga que ela come bem, se movimenta pouco, é saudável ou sedentária.
+- Não fale em perder peso, emagrecer ou quilos por semana; não recomende suplementos. Fale de movimento e de comida de verdade.
 - Seja específico para estes números; nada de frase que serviria para qualquer pessoa.
-- Sem diagnóstico, sem doenças, sem remédios, sem dieta restritiva.
+- Sem diagnóstico, sem doenças, sem remédios, sem dieta restritiva, sem assustar.
 - Não comece com "Olá" nem "Parabéns".
 
 Responda somente com JSON com 4 textos, todos preenchidos:

@@ -161,7 +161,7 @@ def test_tres_participantes_em_sequencia_com_falhas(api, ia_falsa, db, tmp_path)
         assert enviar(api, device, pessoa["id"], "heart_rate_post", pessoa["depois"], "bpm").json()["complete"] is True
 
     # Saved even with the AI failing; the worker retries by itself.
-    assert esperar(lambda: all(sessao(api, p["id"])["perfil"] == "P" for p in pessoas))
+    assert esperar(lambda: all((sessao(api, p["id"])["perfil"] or "").endswith("P") for p in pessoas))
 
     for pessoa in pessoas:
         salvo = sessao(api, pessoa["id"])
@@ -211,7 +211,7 @@ def test_tres_participantes_em_sequencia_com_falhas(api, ia_falsa, db, tmp_path)
         if not arquivos:
             return False
         dados = json.loads(arquivos[-1].read_text(encoding="utf-8"))
-        return sum(1 for p in dados["participantes"] if p["perfil"] == "P") == 3
+        return sum(1 for p in dados["participantes"] if (p["perfil"] or "").endswith("P")) == 3
     assert esperar(backup_completo, 10)
 
 

@@ -30,6 +30,12 @@ PERFIS = [
     ("Batimento alto", "Diego", 19, 70.0, 1.78, 108),
     ("Batimento baixo", "Marina", 22, 58.0, 1.66, 52),
 ]
+# Completas (com atividade): FC depois, modalidade e nível. O 1º é o caso real que a IA errou.
+COMPLETAS = {
+    "Sobrepeso + FC alta + bike": ("Caio", 16, 80.7, 1.75, 108, (139, "bike", "moderate")),
+    "Sobrepeso + flexão": ("Paula", 40, 75.0, 1.62, 78, (112, "flexao", None)),
+}
+PERFIS += [(rotulo, *dados[:5]) for rotulo, dados in COMPLETAS.items()]
 
 
 def ler_prompt() -> str:
@@ -46,12 +52,13 @@ def corpo_do_n8n(expressao: str, payload: dict) -> dict:
     return json.loads(saida.stdout)
 
 
-def payload_do_perfil(i, nome, idade, peso, altura, fc):
+def payload_do_perfil(i, nome, idade, peso, altura, fc, rotulo=None):
+    fc_pos, modalidade, tipo_teste = COMPLETAS[rotulo][5] if rotulo in COMPLETAS else (None, None, None)
     participante = {
         "id": i, "nome": f"{nome} Exemplo", "idade": idade, "peso": peso, "altura": altura,
-        "fas": None, "fc_pre_teste": fc, "fc_pos_teste": None, "tipo_teste": None,
-        "velocidade_teste": None, "imc": calcular_imc(peso, altura), "resistencia": None,
-        "tipo_avaliacao": "simples",
+        "fas": None, "fc_pre_teste": fc, "fc_pos_teste": fc_pos, "tipo_teste": tipo_teste,
+        "modalidade": modalidade, "velocidade_teste": None, "imc": calcular_imc(peso, altura),
+        "resistencia": None, "tipo_avaliacao": "completa" if fc_pos else "simples",
     }
     return montar_payload_n8n(participante)
 
@@ -89,8 +96,8 @@ def main():
     prompt = ler_prompt()
     resultados = []
     for i, (rotulo, nome, idade, peso, altura, fc) in enumerate(PERFIS, start=1):
-        payload = payload_do_perfil(i, nome, idade, peso, altura, fc)
-        print(f"[{i}/5] {rotulo}...", flush=True)
+        payload = payload_do_perfil(i, nome, idade, peso, altura, fc, rotulo)
+        print(f"[{i}/{len(PERFIS)}] {rotulo}...", flush=True)
         try:
             resposta, segundos = chamar_ollama(corpo_do_n8n(prompt, payload), payload["indicadores"])
         except Exception as erro:  # registra e segue para o próximo perfil
@@ -98,7 +105,7 @@ def main():
         print(f"      {segundos:.0f}s", flush=True)
         resultados.append((rotulo, nome, idade, peso, altura, fc, payload["indicadores"], resposta, segundos))
 
-    linhas = ["# Teste do prompt — 5 perfis (mesmo corpo do nó HTTP Request do n8n)", ""]
+    linhas = [f"# Teste do prompt — {len(PERFIS)} perfis (mesmo corpo do nó HTTP Request do n8n)", ""]
     linhas.append("| | " + " | ".join(f"**{r[0]}**" for r in resultados) + " |")
     linhas.append("|---|" + "---|" * len(resultados))
     linhas.append("| Dados | " + " | ".join(
