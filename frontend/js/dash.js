@@ -69,7 +69,7 @@
     $("v-imc-classe").textContent = r.classificacao_imc || "";
     $("v-fc").textContent = fmt(r.fc_repouso, 0, " bpm");
     $("v-fc-faixa").textContent = r.fc_repouso == null ? "" : r.fc_repouso < 60 ? "Abaixo de 60" : r.fc_repouso <= 100 ? "Faixa normal" : "Acima de 100";
-    if (r.fc_pos_teste != null) { $("card-fc-pos").hidden = false; $("v-fc-pos").textContent = fmt(r.fc_pos_teste, 0, " bpm"); }
+    if (r.fc_pos_teste != null) { $("card-fc-pos").hidden = false; $("v-fc-pos").textContent = fmt(r.fc_pos_teste, 0, " bpm"); $("v-atividade").textContent = r.atividade ? `depois de ${r.atividade}` : ""; }
     if (r.fc_score != null) { $("card-fc-score").hidden = false; $("v-fc-score").textContent = fmt(r.fc_score, 1, " bpm"); }
 
     desenharGraficos(r);
