@@ -40,7 +40,7 @@ INSTRUCOES = {
     1: "Suba na balança e fique parado até esta etapa mudar.",
     2: "Desça da balança e fique em pé, reto e parado, embaixo do sensor de altura.",
     3: "Coloque o dedo no sensor e mantenha parado por cerca de 15 s.",
-    4: "Tire o dedo e faça a atividade (bike pelo tempo do nível ou as 20 repetições). Ao terminar, coloque o dedo de novo: a leitura começa no mínimo 60 s depois da FC de repouso.",
+    4: "Tire o dedo e faça a atividade (45 s de bike ou as 20 repetições). Ao terminar, coloque o dedo de novo: a leitura começa no mínimo 60 s depois da FC de repouso.",
     5: "Medições salvas. A IA está gerando a análise; costuma levar cerca de 1 minuto.",
     6: "Avaliação completa. O resultado está no dashboard pessoal.",
 }

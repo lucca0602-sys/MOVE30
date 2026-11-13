@@ -68,8 +68,6 @@ def test_simples_e_corrida_dividem_a_mesma_fila_na_ordem(publico, client):
 
 
 @pytest.mark.parametrize("corpo,erro", [
-    ({"tipo_avaliacao": "completa"}, "nível"),                         # bike sem nível
-    ({"tipo_avaliacao": "completa", "modalidade": "bike"}, "nível"),
     ({"tipo_avaliacao": "completa", "modalidade": "remo"}, "modalidade"),
     ({"tipo_avaliacao": "simples", "fc_pos_teste": 120}, "esforço"),    # simples com FC pós
 ])
@@ -186,8 +184,8 @@ def test_cadastro_sem_email_funciona(publico):
 
 
 @pytest.mark.parametrize("modalidade,nivel,atividade", [
-    ("bike", "light", "1 min de bike no nível leve"),
-    ("bike", "hard", "3 min de bike no nível pesado"),
+    ("bike", None, "45 s de bike"),
+    ("bike", "hard", "45 s de bike"),  # nível antigo vindo de fora vira o único
     ("flexao", None, "20 repetições de flexão"),
     ("agachamento", "hard", "20 repetições de agachamento"),  # exercício ignora nível
 ])
@@ -200,7 +198,7 @@ def test_bike_e_exercicios_salvam_modalidade_e_vao_para_a_ia(publico, client, db
         ).fetchone()
     bike = modalidade == "bike"
     assert salvo[0] == modalidade
-    assert salvo[1] == (nivel if bike else None)
+    assert salvo[1] == ("moderate" if bike else None)
     assert salvo[2] is None  # bike não tem km/h
     assert (salvo[3] is not None) == bike  # só a bike entra no Índice MOVE
 

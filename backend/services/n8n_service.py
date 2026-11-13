@@ -70,7 +70,7 @@ def montar_payload_n8n(participant: dict) -> dict:
             "nome": (participant.get("nome") or "").split()[0] if participant.get("nome") else "participante",
             "tipo_avaliacao": participant.get("tipo_avaliacao", "completa"),
             "modalidade": participant.get("modalidade"),
-            # Ex.: "2 min de bike no nível médio" ou "20 repetições de flexão"; None no simples.
+            # Ex.: "45 s de bike" ou "20 repetições de flexão"; None no simples.
             "atividade": descrever_atividade(participant.get("modalidade"), participant.get("tipo_teste")),
             "faixa_fc_repouso": classificar_fc_repouso(participant["fc_pre_teste"]),
             "leitura": montar_leitura(participant),
