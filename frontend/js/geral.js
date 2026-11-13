@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const INTERVALO_MS = 5000; // igual ao Streamlit
-  const INTERVALO_ARQUIVO_MS = 60000; // arquivo pós-feira não muda: consulta bem menos
+  const INTERVALO_ARQUIVO_MS = 60000; // cópia na nuvem: republicada a cada ~2 min
   const G = window.MOVE30_GRAFICOS;
   const $ = (id) => document.getElementById(id);
   const fmt = (v, casas, sufixo) => v === null || v === undefined ? "—" : `${Number(v).toFixed(casas).replace(".", ",")}${sufixo}`;
@@ -87,8 +87,9 @@
       pill.classList.remove("pill--off");
       if (origem === "arquivo") {
         proximo = INTERVALO_ARQUIVO_MS;
-        const quando = dados.publicado_em ? ` · atualizado em ${new Date(dados.publicado_em).toLocaleDateString("pt-BR")}` : "";
-        pill.textContent = `Resultado final do evento${quando}`;
+        const em = dados.publicado_em ? new Date(dados.publicado_em) : null;
+        const quando = em ? ` · atualizada ${em.toLocaleDateString("pt-BR")} às ${em.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "";
+        pill.textContent = `Cópia salva${quando}`;
       } else {
         pill.textContent = `Tempo real · ${new Date().toLocaleTimeString("pt-BR")}`;
       }
