@@ -351,8 +351,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
     "nome nome"
-    "idade altura"
-    "fas fas"
+    "idade fas"
     "tipo-avaliacao tipo-teste"
     "manual manual"
     "priv priv";
@@ -362,7 +361,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   align-items: end;
 }
 .form__grid > .field--nome { grid-area: nome; }
-.form__grid > .field--altura { grid-area: altura; }
 .form__grid > .field--idade { grid-area: idade; }
 .form__grid > .field--fas { grid-area: fas; }
 .form__grid > .form__manual { grid-area: manual; }
@@ -584,7 +582,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .join__text br, .hero__subtitle br { display: none; }
   .form__title { font-size: 1.5rem; margin-bottom: 24px; }
   /* Fica depois do bloco de 900px de propósito: senão as colunas dele vencem e os campos ocupam meia tela. */
-  .form__grid { grid-template-columns: 1fr; grid-template-areas: "nome" "altura" "idade" "fas" "tipo-avaliacao" "tipo-teste" "manual" "priv"; row-gap: 20px; }
+  .form__grid { grid-template-columns: 1fr; grid-template-areas: "nome" "idade" "fas" "tipo-avaliacao" "tipo-teste" "manual" "priv"; row-gap: 20px; }
   .form__manual { padding: 14px 16px; }
   .form__manual-fields { grid-template-columns: 1fr; }
   .form__manual-fields .field label { min-height: 0; }

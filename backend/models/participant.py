@@ -7,7 +7,8 @@ class ParticipantIndicators(BaseModel):
     email: str | None = Field(default=None, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     idade: int = Field(ge=1, le=120)
     peso: float | None = Field(default=None, ge=10, le=200)
-    altura: float = Field(ge=1, le=2.2)
+    # Opcional: vazia, o sensor da estação mede logo depois do peso.
+    altura: float | None = Field(default=None, ge=1, le=2.2)
     fas: int = Field(ge=1, le=7)
     fc_pre_teste: int | None = Field(default=None, ge=30, le=220)
     fc_pos_teste: int | None = Field(default=None, ge=30, le=220)

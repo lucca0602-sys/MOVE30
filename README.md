@@ -2,11 +2,11 @@
 
 Estação de avaliação física da feira de ciências. Um cadastro só no totem, com a escolha do tipo de teste:
 
-- **Com corrida**: a estação (ESP32-S3) mede peso → FC de repouso → corrida → FC depois.
-- **Simples**: a estação mede peso → 1 FC de repouso, e termina (sem corrida).
+- **Com esforço**: a estação (ESP32-S3) mede peso → altura → FC de repouso → esforço → FC depois.
+- **Simples**: a estação mede peso → altura → 1 FC de repouso, e termina (sem esforço).
 
 Nos dois casos: ao terminar o cadastro, o totem mostra a **senha da estação** e o **QR Code** do resultado pessoal (`/dash/<token>`). Quando as medições acabam, a IA analisa e o resultado aparece no totem e no celular da pessoa.
-A altura vem do cadastro. Se ela passar a ser medida pelo hardware (o firmware já tem `sensor_altura`), a fila da estação precisa deixar de exigir altura no cadastro.
+A altura é medida pelo sensor VL53L0X logo depois do peso. No cadastro ela é opcional (seção "medições manuais"): digitada lá, a estação pula o sensor.
 
 ## Endereços em produção
 
@@ -184,12 +184,13 @@ Os resultados feitos no plano B ficam no mesmo banco. Quando a internet voltar, 
 
 A estação atende uma pessoa por vez, na ordem do cadastro (com corrida e simples dividem a mesma fila). A página **Estação de medição** do Streamlit mostra quem deve estar na balança; a senha é o número que aparece no totem.
 
-No teste **simples** a estação para depois do passo 2: o servidor responde `complete` e o firmware não pede corrida (ele só pede corrida quando a etapa é `heart_rate_post`). Nenhuma mudança na ESP32.
+No teste **simples** a estação para depois do passo 3: o servidor responde `complete` e o firmware não pede corrida (ele só pede corrida quando a etapa é `heart_rate_post`). Nenhuma mudança na ESP32.
 
 1. Peso: a pessoa sobe e fica parada por cerca de 1 s.
-2. FC de repouso: dedo no sensor por cerca de 15 s.
-3. Corrida: a pessoa tira o dedo e corre.
-4. FC depois: dedo no sensor de novo, no mínimo 60 s depois da FC de repouso.
+2. **Altura: a pessoa desce da balança e fica em pé, reta e parada, embaixo do sensor** (pulada se a altura foi digitada no cadastro).
+3. FC de repouso: dedo no sensor por cerca de 15 s.
+4. Esforço: a pessoa tira o dedo e faz a atividade (bike ou 20 repetições).
+5. FC depois: dedo no sensor de novo, no mínimo 60 s depois da FC de repouso.
 
 O botão de emergência cancela a pessoa atual sem apagar o que já foi medido. Para refazer a tara, envie `t` no Monitor Serial com a balança vazia. Firmware: `linha_medicao/linha_medicao/linha_medicao.ino` (confira `secrets.h` e `API_URL` em `config.h`; o IP do PC pode mudar).
 

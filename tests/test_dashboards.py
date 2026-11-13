@@ -64,17 +64,18 @@ def test_paginas_com_muitos_participantes_e_nomes_repetidos(api_dashboard, db, p
         assert "5 avaliação(ões) incompleta(s)" in texto
 
 
-@pytest.mark.parametrize("peso,antes,depois,analise,esperada", [
-    (None, None, None, False, "Peso"),
-    (70, None, None, False, "FC de repouso"),
-    (70, 60, None, False, "Esforço e FC depois"),
-    (70, 60, 140, False, "Análise da IA"),
-    (70, 60, 140, True, "Concluído"),
+@pytest.mark.parametrize("peso,altura,antes,depois,analise,esperada", [
+    (None, None, None, None, False, "Peso"),
+    (70, None, None, None, False, "Altura"),
+    (70, 1.75, None, None, False, "FC de repouso"),
+    (70, 1.75, 60, None, False, "Esforço e FC depois"),
+    (70, 1.75, 60, 140, False, "Análise da IA"),
+    (70, 1.75, 60, 140, True, "Concluído"),
 ])
-def test_etapa_atual_segue_os_dados_salvos(peso, antes, depois, analise, esperada):
+def test_etapa_atual_segue_os_dados_salvos(peso, altura, antes, depois, analise, esperada):
     from shared import ETAPAS, etapa_atual
 
-    assert ETAPAS[etapa_atual(peso, antes, depois, analise)] == esperada
+    assert ETAPAS[etapa_atual(peso, altura, antes, depois, analise)] == esperada
 
 
 def test_estacao_mostra_pessoa_e_etapa_ao_vivo(api_dashboard):  # noqa: F811

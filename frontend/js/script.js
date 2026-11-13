@@ -47,7 +47,7 @@
     idade: (value) => Number.isInteger(integer(value)) && integer(value) >= 1 && integer(value) <= 120 ? "" : "Informe uma idade entre 1 e 120 anos.",
     fas: (value) => Number.isInteger(integer(value)) && integer(value) >= 1 && integer(value) <= 7 ? "" : "Selecione a frequência semanal.",
     peso: (value) => !value.trim() || (Number.isFinite(Number(value.trim().replace(",", "."))) && Number(value.trim().replace(",", ".")) >= 10 && Number(value.trim().replace(",", ".")) <= 200) ? "" : "Informe um peso entre 10 e 200 kg.",
-    altura: (value) => Number.isFinite(Number(value.trim().replace(",", "."))) && Number(value.trim().replace(",", ".")) >= 1 && Number(value.trim().replace(",", ".")) <= 2.2 ? "" : "Informe uma altura entre 1,00 e 2,20 m.",
+    altura: (value) => !value.trim() || Number.isFinite(Number(value.trim().replace(",", "."))) && Number(value.trim().replace(",", ".")) >= 1 && Number(value.trim().replace(",", ".")) <= 2.2 ? "" : "Informe uma altura entre 1,00 e 2,20 m.",
     fc_pre_teste: (value) => !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
     fc_pos_teste: (value) => simples() || !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
     tipo_avaliacao: (value) => ["bike", "agachamento", "abdominal", "flexao", "simples"].includes(value) ? "" : "Escolha o tipo de teste.",
@@ -97,15 +97,16 @@
     feedback.classList.remove("is-error");
     const fields = [...form.querySelectorAll("input, select")].filter((input) => !input.closest("[hidden]"));
     let fieldsValid = fields.map(validateField).every(Boolean);
-    // Medição manual: no simples são peso + 1 batimento; com esforço, os três.
-    const nomesManuais = simples() ? ["peso", "fc_pre_teste"] : ["peso", "fc_pre_teste", "fc_pos_teste"];
-    const manualFields = nomesManuais.map((name) => form.elements.namedItem(name));
-    const manualStarted = manualFields.some((input) => input.value.trim() !== "");
+    // Medição manual: peso e batimentos vão juntos, com a altura (no simples, 1 batimento).
+    // A altura sozinha pode ser digitada se o sensor falhar; o resto a estação mede.
+    const nomesGrupo = simples() ? ["peso", "fc_pre_teste"] : ["peso", "fc_pre_teste", "fc_pos_teste"];
+    const manualStarted = nomesGrupo.some((name) => form.elements.namedItem(name).value.trim() !== "");
+    const manualFields = ["altura", ...nomesGrupo].map((name) => form.elements.namedItem(name));
     if (manualStarted && manualFields.some((input) => input.value.trim() === "")) {
       manualFields.filter((input) => input.value.trim() === "").forEach((input) => {
         const field = input.closest(".field");
         field.classList.add("has-error");
-        field.querySelector(".field__error").textContent = "Preencha todas as medições manuais ou deixe esta seção vazia.";
+        field.querySelector(".field__error").textContent = "Preencha todas as medições manuais (ou só a altura) ou deixe esta seção vazia.";
         input.setAttribute("aria-invalid", "true");
       });
       fieldsValid = false;
@@ -121,13 +122,13 @@
     const decimal = (value) => Number.parseFloat(String(value).trim().replace(",", "."));
     const participant = {
       nome: String(values.get("nome")).trim(),
-      altura: decimal(values.get("altura")),
       idade: integer(values.get("idade")),
       fas: integer(values.get("fas")),
       tipo_avaliacao: simples() ? "simples" : "completa",
     };
     if (!simples()) participant.modalidade = String(values.get("tipo_avaliacao"));
     if (bike()) participant.tipo_teste = String(values.get("tipo_teste"));
+    if (String(values.get("altura")).trim()) participant.altura = decimal(values.get("altura"));
     if (String(values.get("peso")).trim()) participant.peso = decimal(values.get("peso"));
     if (String(values.get("fc_pre_teste")).trim()) participant.fc_pre_teste = integer(values.get("fc_pre_teste"));
     if (!simples() && String(values.get("fc_pos_teste")).trim()) participant.fc_pos_teste = integer(values.get("fc_pos_teste"));
@@ -142,7 +143,7 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(apiError(payload));
-      mostrarResultado(payload, participant.nome.split(" ")[0]);
+      mostrarResultado(payload, participant.nome.split(" ")[0], participant);
     } catch (error) {
       feedback.textContent = error instanceof TypeError
         ? "Sem conexão com o servidor do MOVE 30. Chame alguém da equipe."
@@ -162,7 +163,18 @@
   const msgStatus = document.getElementById("analisando-msg");
   let execucao = 0; // invalida o acompanhamento anterior ao clicar em "Novo participante"
 
-  async function mostrarResultado({ token, numero }, primeiroNome) {
+  // Ordem da estação: balança, sensor de altura, batimentos. Etapa já digitada sai da lista.
+  function passosEstacao(participant) {
+    const passos = [];
+    if (participant.peso === undefined) passos.push("suba na balança");
+    if (participant.altura === undefined) passos.push("fique embaixo do sensor de altura");
+    if (participant.fc_pre_teste === undefined) passos.push("coloque o dedo no sensor de batimentos");
+    if (!passos.length) return "Suas medições já foram informadas. A análise começa em instantes.";
+    const lista = passos.length > 1 ? `${passos.slice(0, -1).join(", ")} e ${passos.at(-1)}` : passos[0];
+    return `Quando chamarem sua senha: ${lista}.`;
+  }
+
+  async function mostrarResultado({ token, numero }, primeiroNome, participant = {}) {
     const minhaExecucao = ++execucao;
     const M = window.MOVE30;
     form.hidden = true;
@@ -175,7 +187,7 @@
     analisando.hidden = false;
     analisePronta.hidden = true;
     tituloStatus.textContent = "Siga para a estação de medição";
-    msgStatus.textContent = "Quando chamarem sua senha, suba na balança e coloque o dedo no sensor.";
+    msgStatus.textContent = passosEstacao(participant);
     resultado.scrollIntoView({ behavior: "smooth", block: "start" });
 
     let timer = null;

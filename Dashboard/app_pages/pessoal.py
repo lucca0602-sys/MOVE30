@@ -122,6 +122,7 @@ def render_dashboard():
     has_analysis = any(pd.notna(latest.get(key)) and str(latest.get(key)).strip() for key in ("perfil", "destaque", "oportunidade", "mensagem"))
     render_etapas(etapa_atual(
         number_or_none(latest, "peso"),
+        number_or_none(latest, "altura"),
         number_or_none(latest, "fc_pre_teste"),
         number_or_none(latest, "fc_pos_teste"),
         has_analysis,
