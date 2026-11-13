@@ -21,9 +21,11 @@ class InvalidHardwareMeasurement(Exception):
     """The sensor reading does not match the current stage or unit."""
 
 
+# Ordem das etapas na estação: peso, depois altura (a pessoa desce da balança e fica
+# embaixo do sensor), depois os batimentos. Valor digitado no cadastro pula a etapa.
 MEASUREMENTS = {
-    "height": ("altura", "m", 1.0, 2.2),
     "weight": ("peso", "kg", 10.0, 200.0),
+    "height": ("altura", "m", 1.0, 2.2),
     "heart_rate_rest": ("fc_pre_teste", "bpm", 30.0, 220.0),
     "heart_rate_post": ("fc_pos_teste", "bpm", 30.0, 220.0),
 }
@@ -69,7 +71,6 @@ def claim_next_assessment(device_id: str) -> dict:
                 )
                 participant = cursor.fetchone()
                 if (participant and participant["cancelada_em"] is None
-                        and participant["altura"] is not None
                         and next_measurement(participant)):
                     return {
                         "status": "active",
@@ -88,14 +89,13 @@ def claim_next_assessment(device_id: str) -> dict:
 
             # Only one device picks from the queue at a time, so two never choose the same person.
             cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended('move30-fila', 0));")
-            # The height comes from registration; without it the station cannot advance.
+            # Altura vazia no cadastro = o sensor da estação mede.
             cursor.execute(
                 """
                 SELECT p.*
                 FROM participantes AS p
                 WHERE p.cancelada_em IS NULL
-                  AND p.altura IS NOT NULL
-                  AND (p.peso IS NULL OR p.fc_pre_teste IS NULL
+                  AND (p.peso IS NULL OR p.altura IS NULL OR p.fc_pre_teste IS NULL
                        OR (p.fc_pos_teste IS NULL AND p.tipo_avaliacao = 'completa'))
                   AND NOT EXISTS (
                       SELECT 1 FROM hardware_assessment_assignments AS a

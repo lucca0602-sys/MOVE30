@@ -91,7 +91,6 @@ def test_fluxo_completo_salva_medicoes_e_analise(client, analise_ia):
 
 
 @pytest.mark.parametrize("alteracao", [
-    {"altura": None},
     {"altura": 0.5},
     {"altura": 3.0},
     {"email": "sem-arroba"},
@@ -227,22 +226,40 @@ def test_cancelar_preserva_medidas_recebidas(client):
     assert float(sessao(client, assessment_id)["peso"]) == 70
 
 
-def test_cadastro_antigo_sem_altura_nao_trava_a_fila(client, db):
-    with db.get_connection() as connection:
-        antigo = connection.execute(
-            "INSERT INTO participantes (nome, idade, fas, tipo_teste) VALUES ('Antigo', 30, 4, 'light') RETURNING id;"
-        ).fetchone()[0]
-        # Reservation left behind by a previous firmware.
-        connection.execute(
-            "INSERT INTO hardware_assessment_assignments (device_id, assessment_id) VALUES (%s, %s);",
-            (DEVICE, antigo),
-        )
-    assessment_id = cadastrar(client)
+def test_sem_altura_no_cadastro_o_sensor_mede_depois_do_peso(client):
+    assessment_id = cadastrar(client, altura=None)
 
     reserva = proxima(client)
-
     assert reserva["assessment_id"] == assessment_id
     assert reserva["next_measurement"] == "weight"
+    assert client.get("/estacao/status").json()["estacoes"][0]["altura"] is None
+
+    peso = enviar(client, assessment_id, "weight", 72.5, "kg")
+    assert peso.json()["next_measurement"] == "height"
+    assert sessao(client, assessment_id)["imc"] is None
+
+    altura = enviar(client, assessment_id, "height", 1.75, "m")
+    assert altura.status_code == 202, altura.text
+    assert altura.json()["next_measurement"] == "heart_rate_rest"
+    assert float(sessao(client, assessment_id)["imc"]) == 23.67
+
+
+def test_altura_digitada_pula_o_sensor(client):
+    assessment_id = cadastrar(client)
+    proxima(client)
+
+    peso = enviar(client, assessment_id, "weight", 72.5, "kg")
+
+    assert peso.json()["next_measurement"] == "heart_rate_rest"
+
+
+def test_altura_fora_de_ordem_e_recusada(client):
+    assessment_id = cadastrar(client, altura=None)
+    proxima(client)
+
+    response = enviar(client, assessment_id, "height", 1.75, "m")
+
+    assert response.status_code == 409
 
 
 def test_dois_dispositivos_nao_pegam_a_mesma_sessao(client):

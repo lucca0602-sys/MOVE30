@@ -152,11 +152,6 @@
               <input id="nome" name="nome" type="text" minlength="2" maxlength="100" autocomplete="name" placeholder="Digite seu nome completo" required>
               <small class="field__error" aria-live="polite"></small>
             </div>
-            <div class="field field--altura">
-              <label for="altura">Altura (m)</label>
-              <input id="altura" name="altura" type="text" inputmode="decimal" placeholder="Ex.: 1,75" required>
-              <small class="field__error" aria-live="polite"></small>
-            </div>
             <div class="field field--idade">
               <label for="idade">Idade</label>
               <input id="idade" name="idade" type="number" min="1" max="120" step="1" inputmode="numeric" placeholder="Idade" required>
@@ -200,8 +195,13 @@
             </div>
             <details class="form__manual">
               <summary>Informar medições manualmente (opcional)</summary>
-              <p>Se as medições já estiverem disponíveis, preencha os três campos. Caso contrário, continue apenas com os dados básicos.</p>
+              <p>A estação mede tudo na ordem: peso, altura (sensor) e batimentos. Só preencha aqui se já tiver as medições. A altura pode ser digitada sozinha, se o sensor falhar; peso e batimentos vão juntos, com a altura.</p>
               <div class="form__manual-fields">
+                <div class="field field--altura">
+                  <label for="altura">Altura (m)</label>
+                  <input id="altura" name="altura" type="text" inputmode="decimal" placeholder="Ex.: 1,75">
+                  <small class="field__error" aria-live="polite"></small>
+                </div>
                 <div class="field field--peso">
                   <label for="peso">Peso (kg)</label>
                   <input id="peso" name="peso" type="text" inputmode="decimal" placeholder="Ex.: 72,5">
@@ -239,7 +239,7 @@
           <div class="analisando" id="analisando">
             <div class="analisando__pulse" aria-hidden="true"><span></span><span></span><span></span></div>
             <p class="analisando__titulo" id="analisando-titulo">Siga para a estação de medição</p>
-            <p class="analisando__msg" id="analisando-msg">Quando chamarem sua senha, suba na balança e coloque o dedo no sensor.</p>
+            <p class="analisando__msg" id="analisando-msg">Quando chamarem sua senha: suba na balança, fique embaixo do sensor de altura e coloque o dedo no sensor de batimentos.</p>
           </div>
           <div id="analise-pronta" class="resultado__analise" hidden></div>
           <button type="button" class="btn btn--teal form__submit" id="novo-cadastro">Novo participante</button>

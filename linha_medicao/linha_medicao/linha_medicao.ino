@@ -1,8 +1,8 @@
 // ============================================================
 // MOVE30 - ESP32-S3
 // Fluxo sequencial por avaliação:
-// peso -> FC repouso -> corrida -> FC pós-teste.
-// A altura é digitada no cadastro.
+// peso -> altura (VL53L0X) -> FC repouso -> esforço -> FC pós-teste.
+// Quem manda a etapa é o back-end; altura digitada no cadastro pula o sensor.
 //
 // MODO_TESTE = 6:
 // testa Wi-Fi e comunicação com o backend via GET /health.

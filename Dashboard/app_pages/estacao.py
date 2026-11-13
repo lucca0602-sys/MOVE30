@@ -31,7 +31,7 @@ def render_dashboard():
             section_heading(f"{estacao['nome']} (#{estacao['id']})", "users", PALETTE["post"], 2)
             atividade = estacao.get("atividade")
             st.markdown(f"**Atividade:** {atividade}" if atividade else "**Atividade:** teste simples (sem esforço)")
-            render_etapas(etapa_atual(estacao["peso"], estacao["fc_pre_teste"], estacao["fc_pos_teste"], False))
+            render_etapas(etapa_atual(estacao["peso"], estacao["altura"], estacao["fc_pre_teste"], estacao["fc_pos_teste"], False))
             st.caption(
                 f"Altura: {format_number(estacao['altura'], 2, ' m')} · "
                 f"Peso: {format_number(estacao['peso'], 1, ' kg')} · "
@@ -44,7 +44,7 @@ def render_dashboard():
     if ultima:
         with st.container(border=True):
             section_heading(f"Última concluída: {ultima['nome']} (#{ultima['id']})", "checklist", PALETTE["post"], 2)
-            render_etapas(5 if ultima["analise_pronta"] else 4)
+            render_etapas(6 if ultima["analise_pronta"] else 5)
 
     with st.container(border=True):
         section_heading(f"Fila de espera: {len(fila)}", "clock", PALETTE["pre"], 2)

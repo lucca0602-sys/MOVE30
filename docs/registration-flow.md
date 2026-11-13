@@ -2,7 +2,7 @@
 
 ## Totem
 
-O cadastro público sempre solicita `nome`, `email`, `altura` (1,00–2,20 m), `idade`, `fas` (1–7) e `tipo_teste` (`light`, `moderate` ou `hard`). Uma seção opcional permite informar peso e FC pré/pós manualmente; ela aceita os três indicadores ou nenhum. A tela confirma o cadastro e não exibe a análise. O e-mail fica só no banco: não é devolvido pela API nem enviado à IA.
+O cadastro público solicita `nome`, `idade`, `fas` (1–7) e o tipo de teste. A altura é medida pelo sensor da estação logo depois do peso. Uma seção opcional permite informar altura (1,00–2,20 m), peso e FC manualmente: a altura pode ir sozinha (se o sensor falhar); peso e FC vão juntos e exigem a altura. A tela confirma o cadastro e não exibe a análise. O e-mail fica só no banco: não é devolvido pela API nem enviado à IA.
 
 ## Dashboard pessoal
 

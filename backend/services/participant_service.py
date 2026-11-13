@@ -200,8 +200,7 @@ def status_estacoes() -> dict:
                 SELECT p.id, p.nome, p.modalidade, p.tipo_teste
                 FROM participantes AS p
                 WHERE p.cancelada_em IS NULL
-                  AND p.altura IS NOT NULL
-                  AND (p.peso IS NULL OR p.fc_pre_teste IS NULL
+                  AND (p.peso IS NULL OR p.altura IS NULL OR p.fc_pre_teste IS NULL
                        OR (p.fc_pos_teste IS NULL AND p.tipo_avaliacao = 'completa'))
                   AND NOT EXISTS (
                       SELECT 1 FROM hardware_assessment_assignments AS a

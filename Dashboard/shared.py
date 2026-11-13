@@ -35,25 +35,28 @@ def api_base() -> str:
     return os.getenv("API_URL", "http://127.0.0.1:8002").rstrip("/")
 
 
-ETAPAS = ("Cadastro", "Peso", "FC de repouso", "Esforço e FC depois", "Análise da IA", "Concluído")
+ETAPAS = ("Cadastro", "Peso", "Altura", "FC de repouso", "Esforço e FC depois", "Análise da IA", "Concluído")
 INSTRUCOES = {
     1: "Suba na balança e fique parado até esta etapa mudar.",
-    2: "Coloque o dedo no sensor e mantenha parado por cerca de 15 s.",
-    3: "Tire o dedo e faça a atividade (bike pelo tempo do nível ou as 20 repetições). Ao terminar, coloque o dedo de novo: a leitura começa no mínimo 60 s depois da FC de repouso.",
-    4: "Medições salvas. A IA está gerando a análise; costuma levar cerca de 1 minuto.",
-    5: "Avaliação completa. O resultado está no dashboard pessoal.",
+    2: "Desça da balança e fique em pé, reto e parado, embaixo do sensor de altura.",
+    3: "Coloque o dedo no sensor e mantenha parado por cerca de 15 s.",
+    4: "Tire o dedo e faça a atividade (bike pelo tempo do nível ou as 20 repetições). Ao terminar, coloque o dedo de novo: a leitura começa no mínimo 60 s depois da FC de repouso.",
+    5: "Medições salvas. A IA está gerando a análise; costuma levar cerca de 1 minuto.",
+    6: "Avaliação completa. O resultado está no dashboard pessoal.",
 }
 
 
-def etapa_atual(peso: object, fc_pre: object, fc_pos: object, analise_pronta: bool) -> int:
+def etapa_atual(peso: object, altura: object, fc_pre: object, fc_pos: object, analise_pronta: bool) -> int:
     """Index in ETAPAS of what the person is doing now, derived from the saved data."""
     if peso is None or pd.isna(peso):
         return 1
-    if fc_pre is None or pd.isna(fc_pre):
+    if altura is None or pd.isna(altura):
         return 2
-    if fc_pos is None or pd.isna(fc_pos):
+    if fc_pre is None or pd.isna(fc_pre):
         return 3
-    return 5 if analise_pronta else 4
+    if fc_pos is None or pd.isna(fc_pos):
+        return 4
+    return 6 if analise_pronta else 5
 
 
 def render_etapas(atual: int) -> None:
