@@ -352,7 +352,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   grid-template-areas:
     "nome nome"
     "idade fas"
-    "tipo-avaliacao tipo-teste"
+    "tipo-avaliacao tipo-avaliacao"
     "manual manual"
     "priv priv";
   column-gap: 28px;
@@ -364,7 +364,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .form__grid > .field--idade { grid-area: idade; }
 .form__grid > .field--fas { grid-area: fas; }
 .form__grid > .form__manual { grid-area: manual; }
-.form__grid > .field--tipo-teste { grid-area: tipo-teste; }
 .form__grid > .field--tipo-avaliacao { grid-area: tipo-avaliacao; }
 /* .field tem display:flex, que venceria o atributo hidden (campos do teste com corrida). */
 [hidden] { display: none !important; }
@@ -582,7 +581,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .join__text br, .hero__subtitle br { display: none; }
   .form__title { font-size: 1.5rem; margin-bottom: 24px; }
   /* Fica depois do bloco de 900px de propósito: senão as colunas dele vencem e os campos ocupam meia tela. */
-  .form__grid { grid-template-columns: 1fr; grid-template-areas: "nome" "idade" "fas" "tipo-avaliacao" "tipo-teste" "manual" "priv"; row-gap: 20px; }
+  .form__grid { grid-template-columns: 1fr; grid-template-areas: "nome" "idade" "fas" "tipo-avaliacao" "manual" "priv"; row-gap: 20px; }
   .form__manual { padding: 14px 16px; }
   .form__manual-fields { grid-template-columns: 1fr; }
   .form__manual-fields .field label { min-height: 0; }

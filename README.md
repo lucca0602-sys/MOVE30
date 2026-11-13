@@ -189,7 +189,7 @@ No teste **simples** a estação para depois do passo 3: o servidor responde `co
 1. Peso: a pessoa sobe e fica parada por cerca de 1 s.
 2. **Altura: a pessoa desce da balança e fica em pé, reta e parada, embaixo do sensor** (pulada se a altura foi digitada no cadastro).
 3. FC de repouso: dedo no sensor por cerca de 15 s.
-4. Esforço: a pessoa tira o dedo e faz a atividade (bike ou 20 repetições).
+4. Esforço: a pessoa tira o dedo e faz a atividade (45 s de bike ou 20 repetições).
 5. FC depois: dedo no sensor de novo, no mínimo 60 s depois da FC de repouso.
 
 O botão de emergência cancela a pessoa atual sem apagar o que já foi medido. Para refazer a tara, envie `t` no Monitor Serial com a balança vazia. Firmware: `linha_medicao/linha_medicao/linha_medicao.ino` (confira `secrets.h` e `API_URL` em `config.h`; o IP do PC pode mudar).

@@ -36,7 +36,6 @@
   const feedback = form.querySelector(".form__feedback");
   const submitButton = form.querySelector(".form__submit");
   const tipoAvaliacao = form.elements.namedItem("tipo_avaliacao");
-  const campoNivel = document.getElementById("campo-nivel");
   const campoFcPos = document.getElementById("campo-fc-pos");
   // O select escolhe a atividade; "simples" vira tipo_avaliacao simples, o resto é "completa" + modalidade.
   const simples = () => tipoAvaliacao.value === "simples";
@@ -51,8 +50,6 @@
     fc_pre_teste: (value) => !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
     fc_pos_teste: (value) => simples() || !value || (Number.isInteger(integer(value)) && integer(value) >= 30 && integer(value) <= 220) ? "" : "Informe uma frequência entre 30 e 220 bpm.",
     tipo_avaliacao: (value) => ["bike", "agachamento", "abdominal", "flexao", "simples"].includes(value) ? "" : "Escolha o tipo de teste.",
-    // O nível (leve/médio/pesado = 1/2/3 min) só existe na bike.
-    tipo_teste: (value) => !bike() || ["light", "moderate", "hard"].includes(value) ? "" : "Selecione o nível da bike.",
   };
   const validateField = (input) => {
     const error = rules[input.name](input.value);
@@ -68,14 +65,9 @@
     field.querySelector(".field__error").textContent = "";
     input.setAttribute("aria-invalid", "false");
   };
-  // Nível só na bike; FC depois do esforço some no simples.
+  // FC depois do esforço some no simples.
   const aplicarTipo = () => {
-    campoNivel.hidden = !bike();
     campoFcPos.hidden = simples();
-    if (!bike()) {
-      form.elements.namedItem("tipo_teste").value = "";
-      limparErro(form.elements.namedItem("tipo_teste"));
-    }
     if (simples()) {
       form.elements.namedItem("fc_pos_teste").value = "";
       limparErro(form.elements.namedItem("fc_pos_teste"));
@@ -127,7 +119,6 @@
       tipo_avaliacao: simples() ? "simples" : "completa",
     };
     if (!simples()) participant.modalidade = String(values.get("tipo_avaliacao"));
-    if (bike()) participant.tipo_teste = String(values.get("tipo_teste"));
     if (String(values.get("altura")).trim()) participant.altura = decimal(values.get("altura"));
     if (String(values.get("peso")).trim()) participant.peso = decimal(values.get("peso"));
     if (String(values.get("fc_pre_teste")).trim()) participant.fc_pre_teste = integer(values.get("fc_pre_teste"));

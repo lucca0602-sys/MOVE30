@@ -24,7 +24,7 @@ def salvar_participante(participant: ParticipantIndicators):
                 if participant.peso is not None and participant.altura is not None
                 else None
             )
-            # Só a bike tem nível: a resistência (0/50/100) vem dele e entra no Índice MOVE.
+            # Só a bike entra no Índice MOVE: a resistência vem do tipo_teste (sempre "moderate" = 50).
             # Bike não tem velocidade em km/h; simples e exercícios ficam sem os três.
             velocidade_teste = None
             if participant.tipo_teste is not None:
@@ -233,7 +233,7 @@ def status_estacoes() -> dict:
                 "peso": row["peso"],
                 "fc_pre_teste": row["fc_pre_teste"],
                 "fc_pos_teste": row["fc_pos_teste"],
-                # O que a pessoa faz entre as duas FCs (a equipe prepara a bike no nível certo).
+                # O que a pessoa faz entre as duas FCs (bike 45 s ou 20 repetições).
                 "atividade": descrever_atividade(row["modalidade"], row["tipo_teste"]),
             }
             for row in em_medicao

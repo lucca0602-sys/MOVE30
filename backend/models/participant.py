@@ -1,6 +1,9 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal
 
+# Bike de 45 s, nível único (ver analytics_service.DURACAO_BIKE_S).
+BIKE_NIVEL_UNICO = "moderate"
+
 class ParticipantIndicators(BaseModel):
     nome: str = Field(min_length=2, max_length=100)
     # Opcional: o cadastro do totem não pede e-mail.
@@ -16,7 +19,8 @@ class ParticipantIndicators(BaseModel):
     # "completa": com esforço (bike ou 20 repetições), FC antes e depois.
     tipo_avaliacao: Literal["completa", "simples"] = "completa"
     modalidade: Literal["bike", "agachamento", "abdominal", "flexao"] | None = None
-    # Nível da bike (leve/médio/pesado = 1/2/3 min). Os exercícios não têm nível.
+    # Bike agora é só 45 s, sem escolha de nível: grava sempre "moderate" (resistência 50
+    # no Índice MOVE). Os valores light/hard ficam aceitos só por compatibilidade.
     tipo_teste: Literal["light", "moderate", "hard"] | None = None
 
     @model_validator(mode="after")
@@ -28,11 +32,8 @@ class ParticipantIndicators(BaseModel):
             self.tipo_teste = None
             return self
         if self.modalidade is None:
-            self.modalidade = "bike"  # a esteira saiu; o teste com nível agora é a bike
-        if self.modalidade == "bike" and self.tipo_teste is None:
-            raise ValueError("Selecione o nível da bike.")
-        if self.modalidade != "bike":
-            self.tipo_teste = None
+            self.modalidade = "bike"  # a esteira saiu; o teste com esforço padrão é a bike
+        self.tipo_teste = BIKE_NIVEL_UNICO if self.modalidade == "bike" else None
         return self
 
     @field_validator("email", mode="before")
