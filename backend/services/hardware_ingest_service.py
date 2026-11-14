@@ -30,6 +30,9 @@ MEASUREMENTS = {
     "heart_rate_post": ("fc_pos_teste", "bpm", 30.0, 220.0),
 }
 
+# Casas decimais do valor gravado no cadastro (mesmas que o firmware já mostra no Serial).
+CASAS_DECIMAIS = {"peso": 1, "altura": 2}
+
 
 def next_measurement(participant: dict) -> str | None:
     for name, (column, _, _, _) in MEASUREMENTS.items():
@@ -220,7 +223,12 @@ def save_hardware_batch(batch: HardwareMeasurementBatch) -> dict:
                  Jsonb(measurements_json), batch.assessment_id),
             )
 
-            updated = {**participant, column: reading.value}
+            # A leitura bruta (acima) nunca muda. O valor gravado no cadastro é arredondado nas
+            # casas que o firmware já pretendia mostrar (kg/m têm muito mais ruído de ponto
+            # flutuante do que o esperado), senão a IA recebe algo como "111.0968" e escreve
+            # errado (ex.: "111.096,8 kg" ao trocar o ponto por vírgula).
+            valor_gravado = round(reading.value, CASAS_DECIMAIS.get(column, 2))
+            updated = {**participant, column: valor_gravado}
             imc = (
                 calcular_imc(updated["peso"], updated["altura"])
                 if updated["peso"] is not None and updated["altura"] is not None
@@ -228,7 +236,7 @@ def save_hardware_batch(batch: HardwareMeasurementBatch) -> dict:
             )
             cursor.execute(
                 f"UPDATE participantes SET {column} = %s, imc = %s WHERE id = %s;",
-                (reading.value, imc, batch.assessment_id),
+                (valor_gravado, imc, batch.assessment_id),
             )
             updated["imc"] = imc
             step = next_measurement(updated)

@@ -33,19 +33,22 @@ static bool lerBruto(long &valor) {
   noInterrupts();
   for (int i = 0; i < 24; i++) {
     digitalWrite(PIN_HX_SCK, HIGH);
-    delayMicroseconds(1);
+    delayMicroseconds(5);
     v = (v << 1) | digitalRead(PIN_HX_DT);
     digitalWrite(PIN_HX_SCK, LOW);
-    delayMicroseconds(1);
+    delayMicroseconds(5);
   }
   digitalWrite(PIN_HX_SCK, HIGH);   // 25º pulso: canal A, ganho 128
-  delayMicroseconds(1);
+  delayMicroseconds(5);
   digitalWrite(PIN_HX_SCK, LOW);
   interrupts();
 
   if (v & 0x800000) v |= 0xFF000000;
 
   tUltimaLeitura = millis();
+  // -1 (todos os bits em 1) e os extremos são leitura inválida: o HX711 não estava pronto.
+  // Antes isso entrava na tara e na pesagem e gerava o "peso fantasma".
+  if (v == -1 || v == 0x7FFFFF || v == -0x800000) return false;
   ultimoBruto = v;
   valor = v;
   return true;
@@ -83,7 +86,13 @@ void pesoIniciar() {
   pinMode(PIN_HX_SCK, OUTPUT);
   digitalWrite(PIN_HX_SCK, LOW);
   delay(500);
-  pesoTarar();
+  // Fio longo: o HX711 pode demorar no boot. Insiste antes de desistir (zero errado = peso fantasma).
+  for (int tentativa = 1; tentativa <= 10; tentativa++) {
+    if (pesoTarar()) return;
+    Serial.printf("[Peso] Tara falhou (tentativa %d/10); tentando de novo.\n", tentativa);
+    delay(500);
+  }
+  Serial.println("[Peso] ERRO: sem tara. Confira os fios do HX711 e mande T no Serial.");
 }
 
 bool pesoPessoaPresente() {

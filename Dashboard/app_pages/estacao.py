@@ -1,9 +1,10 @@
 import importlib
 
 import pandas as pd
+import requests
 import streamlit as st
 
-from shared import aviso_backend_offline, etapa_atual, format_number, load_api_json, render_etapas
+from shared import api_base, aviso_backend_offline, etapa_atual, format_number, load_api_json, render_etapas
 import visuals
 
 importlib.reload(visuals)
@@ -39,7 +40,24 @@ def render_dashboard():
                 f"FC depois: {format_number(estacao['fc_pos_teste'], 0, ' bpm')} · "
                 f"Dispositivo: {estacao['device_id']}"
             )
-            st.caption("Para cancelar quem desistiu, use o botão de emergência da estação.")
+            confirmar_key = f"confirmar_cancelar_{estacao['device_id']}"
+            if st.session_state.get(confirmar_key):
+                st.warning(f"Cancelar {estacao['nome']} e liberar a estação pro próximo da fila?")
+                col_sim, col_nao = st.columns(2)
+                if col_sim.button("Sim, cancelar", key=f"sim_{estacao['device_id']}", type="primary"):
+                    try:
+                        requests.post(f"{api_base()}/estacao/{estacao['device_id']}/cancelar", timeout=5)
+                        st.session_state[confirmar_key] = False
+                        st.rerun()
+                    except requests.RequestException:
+                        st.error("Não consegui cancelar; tente de novo.")
+                if col_nao.button("Não", key=f"nao_{estacao['device_id']}"):
+                    st.session_state[confirmar_key] = False
+                    st.rerun()
+            else:
+                if st.button("Cancelar / pular esta pessoa", key=f"cancelar_{estacao['device_id']}"):
+                    st.session_state[confirmar_key] = True
+                    st.rerun()
 
     if ultima:
         with st.container(border=True):

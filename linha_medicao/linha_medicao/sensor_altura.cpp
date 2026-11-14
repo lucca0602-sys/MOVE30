@@ -6,13 +6,21 @@
 
 static Adafruit_VL53L0X lox;
 
-bool alturaIniciar() { return lox.begin(); }
+
+static bool iniciado = false;
+static int ultimaMM = -1;
+
+bool alturaIniciar() { iniciado = lox.begin(); return iniciado; }
+bool alturaIniciado() { return iniciado; }
+int alturaUltimaDistancia() { return ultimaMM; }
 
 static bool lerDistanciaMM(int &mm) {
+  if (!iniciado) return false;
   VL53L0X_RangingMeasurementData_t m;
   lox.rangingTest(&m, false);
-  if (m.RangeStatus == 4) return false;
+  if (m.RangeStatus == 4) { ultimaMM = -1; return false; }
   mm = m.RangeMilliMeter;
+  ultimaMM = mm;
   return true;
 }
 

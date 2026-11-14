@@ -5,7 +5,7 @@
 // CONFIGURACAO DA ESP32-S3 - MOVE30
 // ============================================================
 
-#define API_URL "http://172.15.3.139:8002"
+#define API_URL "http://172.15.2.45:8002"
 #define DEVICE_ID  "move30-esp32-01"
 
 // Chave de autenticacao usada pelo modo normal.
@@ -34,8 +34,8 @@
 // 6 = teste de comunicacao com GET /health
 #define MODO_TESTE 0
 
-// A altura e digitada no cadastro.
-#define USAR_ALTURA 0
+// Altura medida pelo VL53L0X logo depois do peso (digitada no cadastro pula).
+#define USAR_ALTURA 1
 #define USAR_PESO   1
 #define USAR_FC     1
 
@@ -46,9 +46,9 @@
 #define PIN_HX_SCK    17
 #define PIN_BTN_EMERG 7
 
-#define ALTURA_SENSOR_MM   2300.0f
-#define DIST_MIN_MM        200
-#define DIST_MAX_MM        1300
+#define ALTURA_SENSOR_MM   2000.0f
+#define DIST_MIN_MM        50
+#define DIST_MAX_MM        1000
 #define ALTURA_MIN_M       1.0f
 #define ALTURA_MAX_M       2.2f
 #define ALTURA_AMOSTRAS    20
@@ -56,12 +56,12 @@
 
 // Calibracao: 23,05 contagens/g = 23050 contagens/kg, para ler em kg.
 // PROVISORIO: confirmar o valor exato da calibracao.
-#define FATOR_BALANCA      23050.0f
-#define PESO_MIN_KG        10.0f
+#define FATOR_BALANCA      22100.0f
+#define PESO_MIN_KG        25.0f
 #define PESO_MAX_KG        200.0f
 #define PESO_AMOSTRAS      8
-#define PESO_JANELA_MS     1000UL
-#define PESO_VARIACAO_KG   0.5f
+#define PESO_JANELA_MS     1200UL
+#define PESO_VARIACAO_KG   0.4f
 
 // Sem dedo o sensor le cerca de 750; com dedo, cerca de 120000.
 #define FC_DEDO_LIMIAR     30000L
