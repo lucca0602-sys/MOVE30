@@ -1251,7 +1251,7 @@ Objetivo da etapa: deixar o MOVE30 acessível de fora da rede local para a feira
 | Parte | Onde roda | Endereço |
 |---|---|---|
 | Front (cadastro, resultado pessoal, painel geral) | Vercel (grátis) | https://ia-frontend-seven.vercel.app |
-| App público (só rotas `/public/*`) | PC do evento, publicado pelo Tailscale Funnel | https://notebooklucca.tail5c65a2.ts.net |
+| App público (só rotas `/public/*`) | PC do evento, publicado pelo Tailscale Funnel | https://NOME-DO-PC.tailXXXX.ts.net |
 | API interna, PostgreSQL, n8n, Ollama, Streamlit | PC do evento, só rede local | não publicados |
 
 - Foi criado um segundo app FastAPI (`backend/public_app.py`, porta 8003) só com as rotas públicas. O Funnel publica apenas essa porta. Mesmo quem descobrir a URL não encontra `/participantes`, rotas de hardware nem `/docs`.
