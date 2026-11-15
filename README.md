@@ -123,9 +123,12 @@ Firmware: abra `linha_medicao/linha_medicao/linha_medicao.ino` na Arduino IDE, c
 - **Hardware pede ferramentas de diagnóstico.** Logs no Serial, comandos de tara pelo Monitor e um sketch isolado por sensor economizaram horas na véspera.
 - **Separar teste de produção salvou o dia.** Banco do evento limpo, banco de testes preservado, backup automático.
 
-## Autor
+## Autor e créditos
 
-Desenvolvido por **Lucca** ([@lucca0602-sys](https://github.com/lucca0602-sys)), estudante do Técnico em Informática para Internet, como projeto da feira de ciências de 2026.
+**Lucca** ([@lucca0602-sys](https://github.com/lucca0602-sys)), estudante do Técnico em Informática para Internet: projeto, software, IA, infraestrutura e operação no dia da feira de ciências de 2026.
+
+- **Hardware** (montagem completa da estação: balança, sensores e eletrônica): João Vitor e Caio Felipe
+- **Apoio:** Gabriel Firmino
 
 ## Licença
 
