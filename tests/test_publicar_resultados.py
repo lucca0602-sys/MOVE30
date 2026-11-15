@@ -42,7 +42,7 @@ def ler(url):
     return resultados, painel[0] if painel else None
 
 
-def test_publica_so_prontos_e_sem_dado_interno(db, destino):
+def test_publica_ativos_e_sem_dado_interno(db, destino):
     pronta = inserir(db, "Ana Maria Souza", "ana@example.com")
     sem_analise = inserir(db, "Bruno Lima", "bruno@example.com", perfil=None)
     cancelada = inserir(db, "Carla Dias", "carla@example.com", cancelada=True)
@@ -50,15 +50,18 @@ def test_publica_so_prontos_e_sem_dado_interno(db, destino):
     publicar(destino, *coletar())
     resultados, painel = ler(destino)
 
-    assert set(resultados) == {pronta}
-    assert sem_analise not in resultados and cancelada not in resultados
+    # Sem análise também vai: se o backend cair, o link mostra "analisando", não "não encontrado".
+    assert set(resultados) == {pronta, sem_analise}
+    assert cancelada not in resultados
+    assert resultados[sem_analise]["status"] == "analisando"
+    assert resultados[sem_analise]["primeiro_nome"] == "Bruno"
     dados = resultados[pronta]
     assert dados["primeiro_nome"] == "Ana"
     assert dados["status"] == "pronto"
     assert dados["analise"] == {"perfil": "Perfil", "destaque": "D", "oportunidade": "O", "mensagem": "M"}
     assert not set(dados) & set(PROIBIDOS)
     texto = str(dados) + str(painel)
-    for vazamento in ("ana@example.com", "Souza", "Bruno", "Carla"):
+    for vazamento in ("ana@example.com", "Souza", "Lima", "Carla"):
         assert vazamento not in texto
     # Mesmo formato do /public/coletivo; 2 pessoas ativas (abaixo do mínimo, então sem média).
     assert painel["participantes"] == 2
@@ -114,6 +117,6 @@ def test_sem_publicar_nao_envia_nada(db, destino, monkeypatch, capsys):
     monkeypatch.setenv("ARQUIVO_DATABASE_URL", destino)
     publicar_resultados.main()
 
-    assert "1 resultado(s)" in capsys.readouterr().out
+    assert "1 link(s)" in capsys.readouterr().out
     with psycopg.connect(destino) as connection:
         assert connection.execute("SELECT to_regclass('public.resultados_publicos');").fetchone()[0] is None

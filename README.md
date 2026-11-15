@@ -133,7 +133,7 @@ O banco `move30_evento` já foi criado vazio em 07/11. Para voltar aos testes: `
 
 **Desligar:** `.\scripts\funnel.ps1 -Desligar` e feche as janelas.
 
-## Depois da feira — links no ar com o PC desligado
+## Cópia na nuvem — links no ar mesmo com o PC desligado
 
 O `/dash/<token>` e o `/geral` tentam primeiro o backend ao vivo (Funnel). Se ele não responder,
 leem o **arquivo** publicado na Vercel (`frontend/api/`, Vercel Functions) a partir de um Postgres
@@ -152,17 +152,21 @@ se a IA escreveu o nome completo no texto ele vira só o primeiro nome. Nenhum d
    ```
 4. Vercel → Settings → Environment Variables: `ARQUIVO_DATABASE_URL` = connection string com `move30_leitura` (a mesma do Neon trocando usuário e senha). Redeploy.
 
-**Publicar (depois da feira, e de novo quando quiser atualizar):**
+**Durante a feira:** com `ARQUIVO_DATABASE_URL` no `.env`, o `subir_evento.ps1` abre a janela
+"Copia nuvem", que republica a cada 2 min (`--loop 120`). Vão todas as avaliações ativas, inclusive
+as que ainda esperam medição ou análise (o link mostra "analisando" em vez de "não encontrado").
+Se o PC ou o Funnel cair, quem abrir o QR vê a última cópia (até ~2 min + 5 min de cache da Vercel).
+
+**Publicar na mão (depois da feira, ou quando quiser):**
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.publicar_resultados             # só mostra quantos iria publicar
 .\.venv\Scripts\python.exe -m scripts.publicar_resultados --publicar  # manda para o Neon
 ```
-Lê do `move30_evento` (troque com `--banco`), publica só avaliações com análise pronta e pode rodar
-quantas vezes quiser: atualiza por token e tira da nuvem o que foi cancelado. Publique só depois da
-feira: com o arquivo publicado, um token que ele não tem vira "não encontrado" quando o Funnel falha.
+Lê do `move30_evento` (troque com `--banco`), publica as avaliações ativas e pode rodar
+quantas vezes quiser: atualiza por token e tira da nuvem o que foi cancelado.
 
 **Conferir:** desligue as APIs e o Funnel, abra um `/dash/<token>` real e o `/geral` no 4G. O `/geral`
-mostra "Resultado final do evento". Depois disso dá para tirar `MOVE30_API_URL` da Vercel.
+mostra "Cópia salva · atualizada ...". Depois disso dá para tirar `MOVE30_API_URL` da Vercel.
 
 ## Plano B — internet caiu
 
