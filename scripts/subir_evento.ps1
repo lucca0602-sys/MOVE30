@@ -30,6 +30,12 @@ Subir "API interna" "-m uvicorn backend.main:app --host 0.0.0.0 --port 8002"
 Subir "App publico" "-m uvicorn backend.public_app:app --host 127.0.0.1 --port 8003"
 # Dashboards locais (TV / equipe).
 Subir "Streamlit" "-m streamlit run Dashboard\app.py"
+# Cópia na nuvem (Neon): /dash e /geral seguem no ar se o PC ou o Funnel cair. Republica a cada 2 min.
+if (Get-Content (Join-Path $Raiz ".env") | Where-Object { $_ -match "^ARQUIVO_DATABASE_URL=." }) {
+    Subir "Copia nuvem" "-m scripts.publicar_resultados --publicar --loop 120 --banco $Banco"
+} else {
+    Write-Host "[!!] Sem ARQUIVO_DATABASE_URL no .env: se o PC cair, os links do QR param." -ForegroundColor Yellow
+}
 
 Start-Sleep -Seconds 6
 Testar "API interna" "http://127.0.0.1:8002/db-health"
