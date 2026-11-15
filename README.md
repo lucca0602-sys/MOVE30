@@ -9,7 +9,7 @@ A pessoa se cadastra num totem, sobe numa estação com ESP32 que mede **peso, a
 ![ESP32](https://img.shields.io/badge/ESP32--S3-firmware%20C%2B%2B-E7352C)
 ![Ollama](https://img.shields.io/badge/IA-Ollama%20llama3.2%20%2B%20n8n-black)
 ![Vercel](https://img.shields.io/badge/front-Vercel-000)
-![Tests](https://img.shields.io/badge/testes-100%20pytest-brightgreen)
+![Tests](https://img.shields.io/badge/testes-98%20pytest-brightgreen)
 
 **Demo (arquivo pós-feira):** [painel geral](https://ia-frontend-seven.vercel.app/geral) · [totem](https://ia-frontend-seven.vercel.app)
 
