@@ -125,9 +125,10 @@ Firmware: abra `linha_medicao/linha_medicao/linha_medicao.ino` na Arduino IDE, c
 
 ## Autor e créditos
 
-**Lucca** ([@lucca0602-sys](https://github.com/lucca0602-sys)), estudante do Técnico em Informática para Internet: projeto, software, IA, infraestrutura e operação no dia da feira de ciências de 2026.
+**Lucca** ([@lucca0602-sys](https://github.com/lucca0602-sys)), estudante do Técnico em Informática para Internet: projeto, back-end, front, IA, infraestrutura e operação no dia da feira de ciências de 2026.
 
 - **Hardware** (montagem completa da estação: balança, sensores e eletrônica): João Vitor e Caio Felipe
+- **Firmware da ESP32:** Lucca, Caio Felipe, João Vitor e Gabriel Firmino, escrito juntos no dia da integração da balança com o back-end
 - **Apoio:** Gabriel Firmino
 
 ## Licença
