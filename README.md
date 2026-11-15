@@ -1,225 +1,132 @@
-# MOVE 30
+# MOVE30
 
-Estação de avaliação física da feira de ciências. Um cadastro só no totem, com a escolha do tipo de teste:
+**Estação de avaliação física com IoT + IA local, construída para uma feira de ciências e usada ao vivo por mais de 100 pessoas em um dia.**
 
-- **Com esforço**: a estação (ESP32-S3) mede peso → altura → FC de repouso → esforço → FC depois.
-- **Simples**: a estação mede peso → altura → 1 FC de repouso, e termina (sem esforço).
+A pessoa se cadastra num totem, sobe numa estação com ESP32 que mede **peso, altura e frequência cardíaca**, faz um esforço curto (bike ou exercício) e recebe no celular, via QR Code, uma **análise escrita por um modelo de IA rodando localmente**. Uma TV mostra o painel do grupo em tempo real.
 
-Nos dois casos: ao terminar o cadastro, o totem mostra a **senha da estação** e o **QR Code** do resultado pessoal (`/dash/<token>`). Quando as medições acabam, a IA analisa e o resultado aparece no totem e no celular da pessoa.
-A altura é medida pelo sensor VL53L0X logo depois do peso. No cadastro ela é opcional (seção "medições manuais"): digitada lá, a estação pula o sensor.
+![Python](https://img.shields.io/badge/Python-FastAPI-009688)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-banco-336791)
+![ESP32](https://img.shields.io/badge/ESP32--S3-firmware%20C%2B%2B-E7352C)
+![Ollama](https://img.shields.io/badge/IA-Ollama%20llama3.2%20%2B%20n8n-black)
+![Vercel](https://img.shields.io/badge/front-Vercel-000)
+![Tests](https://img.shields.io/badge/testes-98%20pytest-brightgreen)
 
-## Endereços em produção
+**Demo (arquivo pós-feira):** [painel geral](https://ia-frontend-seven.vercel.app/geral) · [totem](https://ia-frontend-seven.vercel.app)
 
-| O quê | URL |
+---
+
+## O evento em números (14/11/2026)
+
+| | |
 |---|---|
-| Totem (cadastro + senha + QR) | https://ia-frontend-seven.vercel.app |
-| Painel geral (TV) | https://ia-frontend-seven.vercel.app/geral |
-| Resultado pessoal (QR) | https://ia-frontend-seven.vercel.app/dash/TOKEN |
-| Back-end público (Funnel) | https://notebooklucca.tail5c65a2.ts.net |
+| Cadastros no dia | **~114** |
+| Avaliações completas (com esforço) | **85+** |
+| Ritmo da estação | 8 a 12 pessoas/hora, uma por vez |
+| Infra | 1 notebook de 8 GB sem GPU rodando banco, APIs, n8n e IA |
 
-Projeto Vercel: `ia-frontend` (Root Directory `frontend`, preset Other, variável `MOVE30_API_URL`).
-A URL da Vercel já está em `CORS_ORIGINS` no `.env` do PC.
-
-## Arquitetura
+## Como funciona
 
 ```
-            INTERNET                                  │            PC DO EVENTO (rede local)
-                                                      │
- Celular / TV ──► Vercel (front estático)             │
-                  /         cadastro + senha + QR     │
-                  /dash/TOKEN  resultado de 1 pessoa  │
-                  /geral    painel só com médias      │
-                     │                                │
-                     │ fetch https://PC.tailXXXX.ts.net/public/...
-                     ▼                                │
-              Tailscale Funnel ───────────────────────┼──► App público  127.0.0.1:8003  (backend.public_app)
-              (só a porta 8003)                       │        │  só rotas /public/*
-                                                      │        ▼
-                                                      │    PostgreSQL :5432 ◄── API interna :8002 (backend.main)
-                                                      │        ▲                  ▲   ▲
-                                                      │        │                  │   └── ESP32 (Wi-Fi local)
-                                                      │    n8n :5678 ──► Ollama :11434 (llama3.2)
-                                                      │                           └── Streamlit :8501 (equipe/TV local)
+ Celular / Totem / TV ──► Vercel (HTML/JS estático + Vercel Functions)
+                               │  HTTPS
+                               ▼
+                       Tailscale Funnel  (expõe SÓ a porta 8003)
+                               │
+ ┌──────────────── PC do evento ─┼───────────────────────────────────────┐
+ │                               ▼                                       │
+ │   App público FastAPI :8003  (4 rotas /public/*)                      │
+ │                               │                                       │
+ │   ESP32-S3 ──Wi-Fi──► API interna FastAPI :8002 ──► PostgreSQL        │
+ │   (HX711, VL53L0X,             │      ▲                               │
+ │    MAX30102)                   ▼      │ workers: backup + retry da IA │
+ │                     n8n ──► Ollama (llama3.2, CPU)                    │
+ │                                                                       │
+ │   Streamlit :8501 — ferramenta da equipe (fila da estação, dados)     │
+ └───────────────────────────────────────────────────────────────────────┘
+          │ depois da feira
+          ▼
+   Neon (Postgres na nuvem) ◄── Vercel Functions: links continuam no ar com o PC desligado
 ```
 
-**O que fica exposto na internet:** só o app público (porta 8003), com 4 rotas:
+1. **Totem** (`frontend/`): cadastro (nome, idade, nível de atividade, tipo de teste). Devolve a senha da estação e um QR com link pessoal (`/dash/<token>`, UUID aleatório).
+2. **Estação** (`linha_medicao/`): firmware C++ na ESP32-S3 consulta o back-end para saber a etapa da pessoa da vez e mede peso → altura → FC de repouso → esforço → FC depois.
+3. **Back-end** (`backend/`): FastAPI + PostgreSQL. Grava cada leitura assim que chega, calcula IMC, FC Score e o Índice MOVE de forma determinística e manda os números para a IA.
+4. **IA** (n8n + Ollama): gera a análise em linguagem simples. O back-end **valida a resposta** e reprova texto incoerente com os números (ex.: chamar IMC fora da faixa de "normal").
+5. **Resultados**: celular da pessoa (`/dash`), painel da TV (`/geral`, só médias, mínimo 3 pessoas) e Streamlit interno.
 
-| Rota | O que faz |
+## Destaques técnicos
+
+- **Hardware de verdade, problemas de verdade.** Balança com célula de carga + HX711 (o "peso fantasma" era o HX711 devolvendo `-1` em leituras inválidas, que entrava na tara), sensor de distância VL53L0X a 2 m do chão para altura, MAX30102 para batimentos. Firmware modular (`sensor_peso`, `sensor_altura`, `sensor_fc`, `sessao`, `api_client`).
+- **IA local e "sincera".** Sem API paga: Ollama em CPU. Os números são calculados no back-end (a IA não faz conta), e `backend/services/coerencia_ia.py` checa a resposta antes de mostrar; se reprovar, a IA é chamada de novo. Se a IA falhar, as medidas ficam salvas e um worker tenta de novo.
+- **Superfície pública mínima.** Na internet só existe o app público com 4 rotas. Banco, IA, n8n e API interna nunca saem da rede local. Link pessoal por UUID (sem ID sequencial), e-mail nunca sai do banco, para a IA vai só o primeiro nome.
+- **Dados protegidos no banco.** Gatilhos no PostgreSQL recusam sobrescrever medição/análise e apagar participante; backup automático a cada mudança, com script de restauração.
+- **Pronto para o dia ruim.** Plano B sem internet (front servido pelo próprio PC na rede local), scripts que sobem e religam os serviços sozinhos, banco de evento separado do banco de testes.
+- **Vive depois da feira.** `scripts/publicar_resultados.py` copia para o Neon só o que o link já mostrava; as Vercel Functions servem `/dash/<token>` e `/geral` com o PC desligado, sem mudar os QRs.
+- **Testado.** Suíte pytest com banco descartável e IA simulada cobrindo fluxo do hardware, teste simples, proteção de dados, coerência da IA, dashboards e publicação.
+
+## Stack
+
+| Camada | Tecnologias |
 |---|---|
-| `GET /public/health` | teste de vida |
-| `POST /public/cadastro` | cadastro do totem (com corrida ou simples); devolve `token` (link do QR) e `numero` (senha da estação) |
-| `GET /public/resultado/{token}` | resultado de UMA pessoa (primeiro nome, medidas, análise). Sem e-mail nem ID |
-| `GET /public/coletivo` | médias e contagens do grupo (escondidas com menos de 3 pessoas) |
+| Hardware | ESP32-S3, HX711 + célula de carga, VL53L0X, MAX30102, Arduino/C++ |
+| Back-end | Python, FastAPI, Pydantic, psycopg 3, PostgreSQL (migrations SQL + triggers) |
+| IA | n8n (orquestração), Ollama `llama3.2` local |
+| Front | HTML/CSS/JS puro, Chart.js, QR Code, Vercel (+ Functions em Node) |
+| Interno | Streamlit, Plotly, pandas |
+| Infra | Tailscale Funnel, Neon, Docker (n8n), PowerShell |
+| Qualidade | pytest |
 
-**Nunca expostos:** PostgreSQL, Ollama, n8n, API interna (`/participantes`, hardware, estação) e Streamlit.
-O token do QR é um UUID aleatório: não dá pra chutar o link de outra pessoa (o ID sequencial não aparece em lugar nenhum público).
+## Estrutura
 
-| Peça | Onde roda | Papel |
-|---|---|---|
-| `frontend/index.html`, `dash.html`, `geral.html` | Vercel | cadastro do totem + QR, resultado pessoal, painel geral |
-| `backend.public_app` (8003) | PC, só 127.0.0.1 | API pública, atrás do Funnel |
-| `backend.main` (8002) | PC, rede local | API interna: ESP32, Streamlit, workers de backup e de retry da IA |
-| Streamlit (8501) | PC, rede local | ferramenta da equipe: estação, dash com nomes, reprocessar IA |
-| n8n + Ollama | PC | análise da IA (prompt em [docs/prompt-ia-n8n.md](docs/prompt-ia-n8n.md)) |
-
-## Variáveis de ambiente
-
-### `.env` (PC) — modelo em `.env.example`
-
-| Variável | Exemplo | Para quê |
-|---|---|---|
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `localhost`, `5432`… | PostgreSQL |
-| `N8N_WEBHOOK_URL` | `http://localhost:5678/webhook/...` | webhook da IA |
-| `ESP32_API_KEY` | | chave do hardware |
-| `CORS_ORIGINS` | `http://localhost:5500,https://move30.vercel.app` | quem pode chamar as APIs (sem barra no fim) |
-| `CORS_ORIGIN_REGEX` | `^https://move30(-[a-z0-9-]+)?\.vercel\.app$` | opcional: previews da Vercel |
-| `IA_TIMEOUT_S` | `180` | tempo máximo de uma chamada à IA |
-| `IA_INTERVALO_S` | `600` | espera antes de tentar a IA de novo |
-| `ARQUIVO_DATABASE_URL` | `postgresql://...neon.tech/neondb?sslmode=require` | Neon do arquivo pós-feira (usuário dono; só o `publicar_resultados` usa) |
-
-### Vercel
-
-| Variável | Valor |
-|---|---|
-| `MOVE30_API_URL` | URL do Funnel, ex.: `https://meu-pc.tail1234.ts.net` (sem barra no fim) |
-| `ARQUIVO_DATABASE_URL` | connection string do Neon com o usuário **só-leitura** (ver "Depois da feira") |
-
-O build (`frontend/build-config.mjs`) grava essa URL em `js/config.js`. **Mudou a variável → faça Redeploy.**
-
-## Configuração única (antes do evento)
-
-### 1. Banco
-Aplique em ordem as migrations de `backend/migrations/` que faltam (a `006` já foi aplicada no banco real em 07/11).
-
-### 2. Tailscale Funnel (URL fixa, grátis, sem domínio)
-1. Instale: https://tailscale.com/download/windows e faça login (Google/GitHub servem).
-2. No painel https://login.tailscale.com/admin/dns ative **MagicDNS** e **HTTPS Certificates**.
-3. Em https://login.tailscale.com/admin/acls habilite o Funnel para o seu PC (o próprio `tailscale funnel` mostra um link para isso na primeira vez).
-4. Com o app público rodando: `.\scripts\funnel.ps1`. Ele mostra a URL `https://NOME-DO-PC.tailXXXX.ts.net`, **que não muda entre reinícios**.
-5. Teste no celular com o Wi-Fi desligado (4G): `https://NOME-DO-PC.tailXXXX.ts.net/public/health` → `{"status":"ok"}`.
-
-> O Funnel publica **só a porta 8003**. O script roda `tailscale funnel reset` antes, para não sobrar nenhuma publicação antiga.
-
-### 3. Vercel
-1. https://vercel.com → **Add New → Project** → importe o repositório `lucca0602-sys/IA` (branch `melhorias-final` ou `main` depois do merge).
-2. **Root Directory:** `frontend`. Framework: **Other**. O resto vem do `frontend/vercel.json`.
-3. **Environment Variables:** `MOVE30_API_URL` = URL do Funnel.
-4. Deploy. Anote a URL `https://SEU-PROJETO.vercel.app` e coloque em `CORS_ORIGINS` no `.env` do PC. Reinicie as APIs.
-
-## Dia do evento
-
-**Banco limpo (sábado 14/11, 9h):** os testes ficam guardados no banco atual e o evento começa vazio, sem apagar nada.
-```powershell
-.\.venv\Scripts\python.exe -m scripts.preparar_evento --ativar   # troca DB_NAME para move30_evento (faz backup do .env)
-.\.venv\Scripts\python.exe -m scripts.preparar_evento            # confere: banco em uso e quantas avaliações tem
 ```
-O banco `move30_evento` já foi criado vazio em 07/11. Para voltar aos testes: `--voltar`. O `subir_evento.ps1` avisa em amarelo se ainda estiver no banco de testes.
-
-**Ligar (nesta ordem):**
-1. PostgreSQL (serviço do Windows). O Ollama abre sozinho com o Windows.
-2. `.\scripts\subir_evento.ps1` abre o Docker e o n8n (`scriptsbrir_docker.ps1`), depois 3 janelas (API interna, app público, Streamlit) que religam sozinhas se caírem, e testa cada serviço.
-3. `.\scripts\funnel.ps1`
-4. Num celular no 4G: abra `https://SEU-PROJETO.vercel.app`, faça um teste com o nome "TESTE EQUIPE" e confira se o QR abre o resultado.
-
-**Telas:**
-- Totem (cadastro): `https://SEU-PROJETO.vercel.app`. No fim aparece a senha da estação e o QR do resultado.
-- TV: `https://SEU-PROJETO.vercel.app/geral` (atualiza a cada 5 s) ou, sem internet, `http://IP-DO-PC:8501` (Streamlit, rede local).
-- Equipe: Streamlit em `http://IP-DO-PC:8501` (estação, dados completos, reprocessar IA).
-- O PC fica livre para o Serial Monitor do Arduino: nenhum desses serviços precisa da tela dele.
-
-**Memória (PC com 8 GB):** Ollama (~2,5 GB) + Docker/n8n + Postgres + Streamlit + Arduino IDE é apertado. Feche navegador, VS Code e o resto. Se ficar lento, feche o Streamlit (o `/geral` da Vercel cobre a TV).
-
-**A IA demora** (~1-2 min por pessoa na CPU). A tela mostra "Analisando..." e o QR já aparece antes; a pessoa pode ir embora e ver depois no link. Se a IA falhar, a API interna tenta de novo a cada 10 min (`IA_INTERVALO_S`).
-
-**Desligar:** `.\scripts\funnel.ps1 -Desligar` e feche as janelas.
-
-## Cópia na nuvem — links no ar mesmo com o PC desligado
-
-O `/dash/<token>` e o `/geral` tentam primeiro o backend ao vivo (Funnel). Se ele não responder,
-leem o **arquivo** publicado na Vercel (`frontend/api/`, Vercel Functions) a partir de um Postgres
-grátis no Neon. Os QRs não mudam. O arquivo só tem o que o link já mostrava (primeiro nome, idade,
-medidas, análise da IA, data) e os agregados do `/geral`: nada de e-mail, nome completo ou ID, e
-se a IA escreveu o nome completo no texto ele vira só o primeiro nome. Nenhum dado vai para o git.
-
-**Uma vez só:**
-1. https://neon.tech → crie um projeto (plano Free; não apaga projeto parado, só "dorme" e acorda em ~1 s).
-2. Copie a connection string do usuário dono para `ARQUIVO_DATABASE_URL` no `.env` do PC.
-3. No SQL Editor do Neon, crie um usuário só-leitura para a Vercel (rode **depois** da primeira publicação, que cria as tabelas):
-   ```sql
-   CREATE ROLE move30_leitura LOGIN PASSWORD 'troque-esta-senha';
-   GRANT USAGE ON SCHEMA public TO move30_leitura;
-   GRANT SELECT ON resultados_publicos, painel_publico TO move30_leitura;
-   ```
-4. Vercel → Settings → Environment Variables: `ARQUIVO_DATABASE_URL` = connection string com `move30_leitura` (a mesma do Neon trocando usuário e senha). Redeploy.
-
-**Durante a feira:** com `ARQUIVO_DATABASE_URL` no `.env`, o `subir_evento.ps1` abre a janela
-"Copia nuvem", que republica a cada 2 min (`--loop 120`). Vão todas as avaliações ativas, inclusive
-as que ainda esperam medição ou análise (o link mostra "analisando" em vez de "não encontrado").
-Se o PC ou o Funnel cair, quem abrir o QR vê a última cópia (até ~2 min + 5 min de cache da Vercel).
-
-**Publicar na mão (depois da feira, ou quando quiser):**
-```powershell
-.\.venv\Scripts\python.exe -m scripts.publicar_resultados             # só mostra quantos iria publicar
-.\.venv\Scripts\python.exe -m scripts.publicar_resultados --publicar  # manda para o Neon
+backend/          FastAPI: API interna (main.py), app público (public_app.py), serviços e migrations
+frontend/         Totem, /dash e /geral + Vercel Functions do arquivo pós-feira
+linha_medicao/    Firmware da ESP32-S3 (+ sketch isolado para testar o sensor de altura)
+Dashboard/        Streamlit da equipe (estação, dashboard pessoal, coletivo)
+scripts/          Subir o evento, Funnel, preparar banco, publicar resultados, backup
+tests/            Suíte pytest
+docs/             Operação, API do hardware, fluxo de cadastro, prompt da IA, histórico
 ```
-Lê do `move30_evento` (troque com `--banco`), publica as avaliações ativas e pode rodar
-quantas vezes quiser: atualiza por token e tira da nuvem o que foi cancelado.
 
-**Conferir:** desligue as APIs e o Funnel, abra um `/dash/<token>` real e o `/geral` no 4G. O `/geral`
-mostra "Cópia salva · atualizada ...". Depois disso dá para tirar `MOVE30_API_URL` da Vercel.
+## Rodar localmente
 
-## Plano B — internet caiu
-
-O banco, a IA e as APIs são locais e continuam funcionando. Só o caminho Vercel/Funnel para.
-
-1. Conecte o PC e os celulares/totem **no mesmo Wi-Fi local** (roteador próprio ou celular roteando; o ESP32 só pega 2,4 GHz).
-2. Rode o front direto do PC, com as mesmas páginas e rotas:
-   ```powershell
-   .\.venv\Scripts\python.exe -m scripts.servir_front --rede
-   ```
-3. Descubra o IP do PC (`ipconfig` → IPv4, ex.: `192.168.0.10`) e use `http://192.168.0.10:8080` no totem/celulares. O QR gerado aponta para esse endereço e funciona na rede local.
-4. TV: `http://192.168.0.10:8080/geral` ou o Streamlit em `:8501`.
-5. Se o Windows perguntar, **permita** o Python na rede privada (firewall).
-6. Plano C (sem rede nenhuma): o totem roda no próprio PC em `http://127.0.0.1:8080`, e a pessoa fotografa a tela com a análise.
-
-Os resultados feitos no plano B ficam no mesmo banco. Quando a internet voltar, os links `/dash/TOKEN` da Vercel também abrem esses resultados.
-
-## Fluxo da estação (hardware)
-
-A estação atende uma pessoa por vez, na ordem do cadastro (com corrida e simples dividem a mesma fila). A página **Estação de medição** do Streamlit mostra quem deve estar na balança; a senha é o número que aparece no totem.
-
-No teste **simples** a estação para depois do passo 3: o servidor responde `complete` e o firmware não pede corrida (ele só pede corrida quando a etapa é `heart_rate_post`). Nenhuma mudança na ESP32.
-
-1. Peso: a pessoa sobe e fica parada por cerca de 1 s.
-2. **Altura: a pessoa desce da balança e fica em pé, reta e parada, embaixo do sensor** (pulada se a altura foi digitada no cadastro).
-3. FC de repouso: dedo no sensor por cerca de 15 s.
-4. Esforço: a pessoa tira o dedo e faz a atividade (45 s de bike ou 20 repetições).
-5. FC depois: dedo no sensor de novo, no mínimo 60 s depois da FC de repouso.
-
-O botão de emergência cancela a pessoa atual sem apagar o que já foi medido. Para refazer a tara, envie `t` no Monitor Serial com a balança vazia. Firmware: `linha_medicao/linha_medicao/linha_medicao.ino` (confira `secrets.h` e `API_URL` em `config.h`; o IP do PC pode mudar).
-
-## Proteção dos dados
-
-- Cada leitura é gravada assim que chega, ligada ao ID do participante. O banco recusa sobrescrever medição/análise e recusa apagar participante (gatilhos `proteger_participante` e `proteger_token_publico`).
-- Público vê só agregados (`/geral`, com mínimo de 3 pessoas) ou o resultado do próprio token. E-mail nunca sai do banco. Para a IA (local) vai só o primeiro nome.
-- Se a IA falhar, as medidas continuam salvas e a análise é tentada de novo.
-- A API interna grava em `backups/` um arquivo novo sempre que os dados mudam (pasta fora do Git, tem dados pessoais). Restaurar: `.\.venv\Scripts\python.exe -m scripts.restaurar_backup backups\arquivo.json`.
-
-## Rodar localmente (desenvolvimento)
+Pré-requisitos: Python 3.11+, PostgreSQL, e (para a IA) n8n + Ollama com `llama3.2`.
 
 ```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+copy .env.example .env      # preencha banco, webhook do n8n e chave da ESP32
+# aplique as migrations de backend/migrations/ em ordem
+
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8002
 .\.venv\Scripts\python.exe -m uvicorn backend.public_app:app --host 127.0.0.1 --port 8003
-.\.venv\Scripts\python.exe -m scripts.servir_front          # http://127.0.0.1:8080 (teste, /dash, /geral)
+.\.venv\Scripts\python.exe -m scripts.servir_front          # http://127.0.0.1:8080
 .\.venv\Scripts\python.exe -m streamlit run Dashboard\app.py
+
+.\.venv\Scripts\python.exe -m pytest tests                  # cria e apaga o banco move30_test
 ```
 
-## Testes
+Firmware: abra `linha_medicao/linha_medicao/linha_medicao.ino` na Arduino IDE, copie `secrets.example.h` para `secrets.h` (Wi-Fi e chave) e ajuste `API_URL` em `config.h`.
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest tests
-.\.venv\Scripts\python.exe -m scripts.testar_prompt        # prompt da IA com 5 perfis no Ollama local
-```
+## Documentação
 
-Os testes criam e apagam um banco separado (`move30_test`) e usam uma IA simulada. Mais detalhes em [docs/hardware-api.md](docs/hardware-api.md) e [docs/registration-flow.md](docs/registration-flow.md).
+- [Operação (runbook)](docs/operacao.md): deploy, dia do evento, plano B, pós-feira
+- [API do hardware](docs/hardware-api.md): contrato ESP32 ↔ back-end
+- [Fluxo de cadastro](docs/registration-flow.md)
+- [Prompt da IA](docs/prompt-ia-n8n.md) e [testes do prompt](docs/prompt-ia-testes.md)
+- [Histórico de desenvolvimento](docs/historico-desenvolvimento.md): diário do projeto, de agosto à feira
+
+## O que aprendemos (e o que faria diferente)
+
+- **A leitura de FC não ficou confiável.** No dia, a FC de repouso média foi 97 bpm e em boa parte das avaliações a FC depois do esforço saiu *menor* que a de repouso: o detector de batimentos provavelmente conta batida a mais e a medição pós-esforço demora. Próximo passo: validar contra oxímetro e trocar o algoritmo de detecção de picos.
+- **8 GB de RAM é o limite.** Ollama + Docker/n8n + Postgres + Streamlit no mesmo notebook exigiu fechar todo o resto. Evolução natural: back-end na nuvem (Render/Fly + Neon) e LLM por API.
+- **Hardware pede ferramentas de diagnóstico.** Logs no Serial, comandos de tara pelo Monitor e um sketch isolado por sensor economizaram horas na véspera.
+- **Separar teste de produção salvou o dia.** Banco do evento limpo, banco de testes preservado, backup automático.
+
+## Autor
+
+Desenvolvido por **Lucca** ([@lucca0602-sys](https://github.com/lucca0602-sys)), estudante do Técnico em Informática para Internet, como projeto da feira de ciências de 2026.
+
+## Licença
+
+[MIT](LICENSE)

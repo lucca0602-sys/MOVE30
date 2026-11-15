@@ -14,6 +14,7 @@ from backend.services.participant_service import (
     atualizar_medicoes_manuais,
     status_estacoes,
 )
+from backend.services.hardware_ingest_service import release_assessment
 from backend.cors import configurar_cors
 from backend.services.participant_service import listar_participantes
 from backend.services.participant_service import buscar_participante_por_id
@@ -92,6 +93,13 @@ def obter_indicadores_coletivos():
 
 @app.get("/estacao/status")
 def obter_status_estacao():
+    return status_estacoes()
+
+
+@app.post("/estacao/{device_id}/cancelar")
+def cancelar_estacao(device_id: str):
+    """Libera a estação sem precisar do botão físico de emergência (staff, rede interna)."""
+    release_assessment(device_id)
     return status_estacoes()
 
 

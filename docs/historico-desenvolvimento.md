@@ -1251,7 +1251,7 @@ Objetivo da etapa: deixar o MOVE30 acessível de fora da rede local para a feira
 | Parte | Onde roda | Endereço |
 |---|---|---|
 | Front (cadastro, resultado pessoal, painel geral) | Vercel (grátis) | https://ia-frontend-seven.vercel.app |
-| App público (só rotas `/public/*`) | PC do evento, publicado pelo Tailscale Funnel | https://notebooklucca.tail5c65a2.ts.net |
+| App público (só rotas `/public/*`) | PC do evento, publicado pelo Tailscale Funnel | https://NOME-DO-PC.tailXXXX.ts.net |
 | API interna, PostgreSQL, n8n, Ollama, Streamlit | PC do evento, só rede local | não publicados |
 
 - Foi criado um segundo app FastAPI (`backend/public_app.py`, porta 8003) só com as rotas públicas. O Funnel publica apenas essa porta. Mesmo quem descobrir a URL não encontra `/participantes`, rotas de hardware nem `/docs`.
@@ -1329,3 +1329,115 @@ Correções:
 - Decidir em 10/11 se a altura será medida pelo hardware; se sim, a fila da estação precisa deixar de exigir altura no cadastro.
 - Validações de hardware que continuam abertas: FC depois de corrida real, calibração da balança, três pessoas seguidas e reconexão do Wi-Fi.
 - Atualizar o endereço do repositório na cópia local (`git remote set-url`).
+
+---
+
+## 10/11 a 12/11/2026 - Ajustes de uso real: celular, exercícios e ferramentas da equipe
+
+### Front responsivo (PR #1, #2)
+
+- No celular, o formulário ocupava meia tela por causa de um bug de CSS. Corrigido; os campos passaram a ter 16 px para o iPhone não dar zoom ao tocar, e o rodapé e o painel foram ajustados até 320 px de largura. Validado no iPhone.
+- O campo FAS (dias de atividade física) virou um select de 1 a 7.
+
+### Streamlit (PR #3)
+
+- Botão "Mostrar QR de novo" no dashboard pessoal, para quem perdeu o link (o token é lido direto do banco).
+
+### Testes no hardware
+
+- O sensor de FC antigo não detectava o dedo e foi trocado.
+- Teste simples e teste completo passaram na ESP32 real, mas a FC de repouso veio alta (159 e 108 bpm). Suspeita: o detector conta batida a mais. Ficou pendente comparar com um oxímetro.
+- Com a RAM do PC em 0,4 GB livre, o Docker caiu e o n8n parou junto. Decisão para o dia: só os serviços do MOVE30 abertos.
+
+### Bike e exercícios no lugar da esteira (PR #4)
+
+- A esteira saiu. O esforço passou a ser bike ou exercício (agachamento, abdominal ou flexão, 20 repetições), com FC antes e depois. Nova coluna `modalidade` (migration `008`).
+- Streamlit avisa "Backend offline" e o `subir_evento.ps1` religa API, app público e Streamlit se algum cair.
+
+### Docker que travava (PR #6)
+
+- O Docker Desktop morria quando era aberto por um terminal/ferramenta (o processo filho morria junto). `scripts/abrir_docker.ps1` passou a abrir o Docker pelo `explorer.exe` e liga o n8n em seguida.
+
+### Arquivo pós-feira (PR #5)
+
+- Como o repositório ia ficar público para portfólio, os links precisavam sobreviver ao PC desligado. `scripts/publicar_resultados.py` copia para um Postgres grátis no Neon só o que o link já mostrava (primeiro nome, idade, medidas, análise, data) e os agregados do `/geral`. Vercel Functions (`frontend/api/`) servem esses dados quando o back-end ao vivo não responde. Os QRs não mudam.
+
+### IA mais sincera (PR #7)
+
+- O modelo descrevia IMC fora da faixa como "normal". O prompt e a checagem de coerência passaram a reprovar isso.
+
+---
+
+## 13/11/2026 - Véspera: sensor de altura, balança e cópia na nuvem ao vivo
+
+### Altura pelo sensor (PR #8)
+
+- Decidido medir a altura na estação, logo depois do peso: ordem peso → altura → FC. A altura saiu do cadastro e foi para o bloco de medições manuais (se digitada, a estação pula o sensor).
+- A fila da estação deixou de exigir altura no cadastro; Streamlit e totem passaram a mostrar a etapa "Altura".
+- O VL53L0X não era encontrado depois de uma emenda nos fios; ressoldado, funcionou. Sensor a 2,00 m do chão: `ALTURA_SENSOR_MM 2000`, faixa de 50 a 1000 mm, diagnóstico `[Altura] Lendo` no Serial e um sketch isolado em `linha_medicao/teste_altura` para testar só o sensor.
+
+### Bike com nível único (PR #9)
+
+- Os três níveis da bike (1/2/3 min) viraram um só: 45 s. Sem select de nível; a resistência do Índice MOVE fica fixa em 50.
+
+### Balança: o "peso fantasma"
+
+- Causa: o HX711 devolvia `-1` (todos os bits em 1) quando não estava pronto, e esse valor entrava na tara e na pesagem.
+- Correção no firmware: descarta `-1` e os extremos, a tara insiste 10 vezes no boot, `T` maiúsculo no Serial força a tara, clock do HX711 de 1 para 5 µs, trava de presença em 25 kg / 2 s / 0,3 kg, `FATOR_BALANCA` 22100.
+- Teste: pessoa de 67 kg lida como 67,62 kg.
+
+### Rede do evento
+
+- O IP do PC mudou por DHCP; `API_URL` do firmware atualizado e a placa gravada de novo. A ESP32 e o PC ficaram em redes Wi-Fi diferentes da escola, mas se enxergavam.
+
+### Cópia na nuvem ao vivo (PR #10)
+
+- `publicar_resultados --publicar --loop 120` republica no Neon a cada 2 min, inclusive avaliações ainda sem análise. O `subir_evento.ps1` abre essa janela sozinho. Se o PC ou o Funnel cair durante a feira, o QR mostra a última cópia; o `/geral` mostra "Cópia salva · atualizada dd/mm às HH:MM".
+
+### Validação final
+
+- Fluxo completo no hardware real: peso 82,6 kg, altura 1,85 m, FC 120 bpm (repouso ainda alto).
+- Serviços abertos por ferramenta morriam ao fechar o terminal dela; solução: abrir o `subir_evento.ps1` pelo `explorer.exe`.
+
+---
+
+## 14/11/2026 - Dia da feira
+
+### Operação
+
+- 9h: `preparar_evento --ativar` trocou para o banco limpo `move30_evento`; serviços, n8n, Ollama e Funnel no ar.
+- Ajustes feitos durante o dia: peso e altura passaram a ser gravados arredondados (a IA recebia `111.0968` e escrevia "111.096,8 kg") e o Streamlit ganhou o botão "Cancelar / pular esta pessoa" (`POST /estacao/{id}/cancelar`), para liberar a estação sem o botão físico.
+
+### Números
+
+- Cerca de **114 cadastros** no dia; **85 avaliações completas** até as 15h50.
+- Uma pessoa por vez, de 8 a 12 por hora, num notebook de 8 GB sem GPU rodando banco, APIs, n8n, Ollama e Streamlit.
+
+### Problema encontrado: frequência cardíaca
+
+- FC de repouso média de 97 bpm, com 15 pessoas acima de 120 (até 181).
+- Em 37 das 85 avaliações completas, a FC depois do esforço ficou **menor** que a de repouso.
+- Conclusão: a leitura de FC não é confiável. Causas prováveis: o detector de picos conta batida a mais no repouso, e a medição pós-esforço começa tarde demais (a FC já caiu). Antes de usar FC em qualquer análise, validar contra oxímetro e trocar o algoritmo.
+
+### Encerramento
+
+- Backup final do banco do evento salvo fora do Git (`backups/`). Serviços, n8n, Ollama e Funnel desligados.
+- Ajustes do dia, documentação e limpeza do repositório enviados no PR #11; repositório aberto ao público como portfólio.
+
+---
+
+# Conclusão do projeto
+
+O MOVE30 saiu de um teste de conexão FastAPI → n8n em agosto para um sistema completo usado ao vivo: totem, estação com três sensores, back-end com proteção de dados, IA local com checagem de coerência, painel da TV e links pessoais que continuam no ar depois do evento.
+
+### O que funcionou
+
+- Fluxo de ponta a ponta com mais de 100 pessoas, sem perda de dados.
+- Superfície pública mínima (4 rotas) e nenhum dado pessoal no repositório.
+- Scripts de operação e plano B; banco do evento separado do banco de testes.
+
+### O que fica para uma próxima versão
+
+- Refazer a medição de FC (validação com oxímetro, novo detector de picos, medição pós-esforço imediata).
+- Back-end na nuvem (Render/Fly + Neon) e LLM por API, tirando a dependência de um único notebook.
+- Calibração definitiva da balança e IP fixo para a estação.

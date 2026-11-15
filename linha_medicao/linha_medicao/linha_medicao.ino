@@ -292,6 +292,20 @@ static void atualizarAltura() {
     return;
   }
 
+  // Diagnóstico: mostra o que o sensor vê enquanto espera a pessoa.
+  static unsigned long tAvisoAltura = 0;
+  if (millis() - tAvisoAltura > 1000) {
+    tAvisoAltura = millis();
+    if (!alturaIniciado()) {
+      Serial.println("[Altura] Sensor NAO iniciado (VL53L0X). Confira VIN 3V3, GND, SDA 9, SCL 8 e de RESET.");
+    } else if (alturaUltimaDistancia() < 0) {
+      Serial.println("[Altura] Lendo: fora de alcance (ninguem embaixo?)");
+    } else {
+      Serial.printf("[Altura] Lendo: %d mm (~%.2f m)\n", alturaUltimaDistancia(),
+                    (ALTURA_SENSOR_MM - alturaUltimaDistancia()) / 1000.0f);
+    }
+  }
+
   if (!s.ocupada) {
     if (alturaPessoaPresente()) {
       s.ocupada = true;
@@ -409,10 +423,11 @@ static void processarComandoTara() {
       continue;
     }
 
+    // "T" maiúsculo força a tara mesmo lendo peso (zero fantasma). Balança TEM que estar vazia.
     if (estacoes[EST_PESO].medido) {
       Serial.println("[Peso] Tara recusada: há leitura aguardando envio.");
 
-    } else if (pesoPessoaPresente()) {
+    } else if (comando == 't' && pesoPessoaPresente()) {
       Serial.println("[Peso] Tara recusada: a balança não está vazia.");
 
     } else if (pesoTarar()) {
