@@ -1445,3 +1445,15 @@ O MOVE30 saiu de um teste de conexão FastAPI → n8n em agosto para um sistema 
 - Refazer a medição de FC (validação com oxímetro, novo detector de picos, medição pós-esforço imediata).
 - Back-end na nuvem (Render/Fly + Neon) e LLM por API, tirando a dependência de um único notebook.
 - Calibração definitiva da balança e IP fixo para a estação.
+
+---
+
+## 14/11/2026 (noite) - Documentação bruta publicada no repositório
+
+Depois da conclusão do projeto, o documento bruto foi revisado e publicado no repositório público.
+
+- O documento bruto (`DOCUMENTACAO_PROJETO_BRUTO.md`) passou a ser versionado na raiz do repositório. Antes ele existia apenas numa cópia local dentro de um worktree do Claude Code, sem commit.
+- O histórico de 10/11 a 14/11 e a conclusão do projeto, que estavam só em `docs/historico-desenvolvimento.md`, foram incorporados ao documento bruto.
+- O hostname do Tailscale Funnel foi redigido como `NOME-DO-PC.tailXXXX.ts.net` (o repositório público não expõe o endereço real).
+- A lista de pendências da etapa ESP32 foi reposicionada na seção "Permanecem como etapas futuras".
+- Mudança feita em branch separada (`docs/documentacao-bruta`) e mesclada na `main` por Pull Request.
